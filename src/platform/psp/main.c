@@ -239,7 +239,7 @@ int main(int argc, char **argv) {
     a->world_district = -1;
     a->hud_override = -1;
 #ifdef HUSH_AUTOTEST
-    a->autotest = 1;
+    a->autotest = HUSH_AUTOTEST;
 #endif
     gfx_init();
     loading_screen("HUSH");
@@ -302,7 +302,7 @@ int main(int argc, char **argv) {
         case ST_PLAY:
             if (a->in.pressed & PSP_CTRL_START) { sfx_play(&a->sfx, SFX_UI_SELECT); a->menu_sel = 0; app_set_state(ST_PAUSE); break; }
             {
-                int steps = (a->autotest && a->mode == MODE_PATROL) ? (HUSH_AUTOTEST == 2 ? 8 : 4) : 1;   /* validation build fast-forwards missions */
+                int steps = (a->autotest && a->mode == MODE_PATROL) ? (a->autotest == 2 ? 8 : 4) : 1;   /* validation build fast-forwards missions */
                 for (int i = 0; i < steps; i++) game_update(dt, 1);
             }
             play_acc += dt;
