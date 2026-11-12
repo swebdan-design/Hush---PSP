@@ -1,0 +1,118 @@
+# HUSH — Generative Audio Engine
+
+The engine (`src/audio/`) is plain C99/gnu11 with no platform dependencies. The PSP game and the desktop
+renderer (`tools/audio-renderer/hush_render.c`) compile the same files.
+
+## 1. Signal path
+```
+             ┌─ PAD bus (drones, harmony pads, stabs, textures) ── chorus ─┐
+ voices ─────┼─ MAIN bus (bass, sequence, percussion, bells, glass) ───────┼─► sum ─► + dub delay ─► + FDN ambience ─► master (DC block, hiss, soft limiter)
+ (25 tone,   └─ RADIO bus (radio fragments, Stacks static) ── degradation ─┘          ▲ send          ▲ send (+ delay output)
+  8 drum)
+```
+- **Sample rate**: 22.05 kHz on the PSP (upsampled ×2 to the 44.1 kHz hardware channel by the audio thread), 44.1 kHz on the host.
+  All musical decisions are made per 16th-note step, so the *event stream is identical at both rates* (tested).
+- **Control rate**: blocks of ≤ 32 samples; envelopes, LFOs, filter coefficients and pitch update per block and are
+  linearly ramped inside it; blocks split exactly at step boundaries and at micro-timed events (swing, humanisation).
+- **No allocation, locks or I/O on the audio path.** All buffers are static (~1.4 MB including delay lines and 656 KB of wavetables).
+
+## 2. DSP foundation (`dsp.c`, `synth.c`)
+- **Oscillators**: sine; band-limited **triangle, saw, square** wavetables; **variable pulse** (difference of two phase-offset saws,
+  PWM by LFO); **white noise** (xorshift32); custom additive **wavetables** GLASS, VOX (two formant humps), ORGAN (drawbar
+  ratios), HOLLOW (odd harmonics with a notch), GRIT (phase-scrambled partials); **two-operator FM**.
+  Tables are 2048 samples × 10 mip levels (512 → 1 harmonics), built additively at boot from an integer-indexed sine table;
+  the level is chosen per block so no harmonic exceeds 0.45 × sample rate (alias control). 32-bit phase accumulators, linear interpolation.
+- **Voice**: two oscillators with crossfade/morph (LFO-modulated "wavetable position"), detune, noise mix, **TPT state-variable filter**
+  (LP/BP/HP, stable under modulation) with its own ADSR, key tracking, amp ADSR, per-voice LFO (pitch, cutoff, PWM, morph),
+  glide, soft-saturation drive, equal-power pan, delay and reverb sends. Retriggered or stolen voices continue from their current
+  level (no click). Voice stealing prefers released, quietest voices.
+- **Percussion models**: kick (pitch-swept sine + click), snare and rim (tone + band-passed noise), hats (six detuned square
+  oscillators + noise through HP/BP, the classic metallic recipe), metal (inharmonic FM clang through a resonant band-pass), click
+  (noise burst), thud (slow low sweep for distant industry).
+- **Effects** (`fx.c`): ping-pong **dub delay** with filtered, saturated feedback and slow tape-like time glide + wow;
+  **4-line FDN ambience** (Hadamard feedback, two input diffusers, per-line damping; decay time follows altitude, reverb amount,
+  landmarks); **stereo chorus** on the pad bus; **radio degradation** (band limiting, bit-depth and sample-rate reduction,
+  saturation, crackle); **master** with DC blocker, tape hiss (Decay layer) and a soft limiter (linear below −6 dBFS, ceiling ≈ −0.5 dBFS).
+
+## 3. The six musical systems (`composer.c`)
+| Layer | What it does |
+|---|---|
+| **A. Atmosphere** | Two long drones (root + fifth/octave/fourth/ninth, 6 s attacks, 7 s releases, LFO periods of 10–40 s on cutoff, detune and wavetable morph), occasional high glass shimmer partials, a sub-octave drone at the Black Reservoir. Re-voiced every 24–64 bars and on key/mode/seed changes by crossfade. |
+| **B. Harmony** | Chords are built from the current mode by stacking scale thirds, with 7ths, 9ths, 11ths, sus2/sus4 and (under tension) a ♭9 colour tone, chosen by complexity, darkness, altitude and pursuit. Root movement follows a weighted transition matrix (diminished roots are rare). **Voice leading**: each of four voices moves to its nearest chord tone, then required tones (third/sus, seventh) are restored by the cheapest substitution. Harmonic rhythm: 1–16 bars, slower when high or hovering. Dub-techno chord stabs on off-beats feed the delay. |
+| **C. Pulse** | A 16-step bass sequencer in four styles (steady, driving, dub, deep) with probabilistic triggering, accents, slides (glide), and degree choices weighted toward root/fifth. Patterns **mutate** every 4 bars by `seq_variation × motion`, are stored in a 4-slot **pattern memory** and sometimes recalled. A Euclidean arpeggio walks the current voicing. |
+| **D. Percussion** | Per-instrument 16-step probability lanes in four styles — *geometric* (Civic), *industrial* (Works), *broken* (Stacks), *sparse* (Undertow) — built from Euclidean rhythms. Lanes rotate and gain/lose ghost notes; FRAGMENTATION sections displace kick/snare and switch to half-time; phrase-end fills; swing; structural hits survive at low energy while ornaments drop out first. |
+| **E. Fragments** | Motifs of 3–8 notes generated by a weighted scale walk, kept in an 8-slot **motif memory**. Each phrase is new, recalled exactly, or a variation (transposition, inversion, retrograde, augmentation, truncation, ornament). Instruments: FM bell, glass, radio lead (through the radio bus), vox. Landmarks have fixed motifs. Long rests are part of the design. |
+| **F. Decay** | An *erosion* value (darkness, district, section, Silent Exchange, Archive repetitions) drives pitch drift random walks on sustained layers, note dropouts in stabs/arps/fragments, radio degradation depth, delay feedback, wow, hiss and filter closure. |
+
+### Long-form structure
+Sections **EMERGENCE, ACCUMULATION, SUSTAIN, FRAGMENTATION, DISSOLUTION, SILENCE, RENEWAL** each scale the six layers'
+energy. The next section is chosen from a weighted transition table (modified by density, motion, pursuit and the
+district's appetite for silence), so there is no fixed order. Lengths are 4–32 bars, phrase-aligned to multiples of 4.
+RENEWAL may move the tonal centre (by fourth, fifth, minor third or tone) at the next chord change; later renewals tend to
+return home. Silence is a real state: in SILENCE only faint drone and texture remain.
+
+### Determinism and seeds
+- PRNG: **PCG32** (PCG-XSH-RR 64/32). Each concern — structure, harmony, pulse, percussion, fragments, decay, atmosphere,
+  misc — owns a stream seeded by SplitMix64(seed, stream id), so changing what one layer consumes never shifts another.
+- Inputs are quantised to 1/256 and smoothed **per musical step** with series-approximated coefficients (only + − × ÷), and the
+  deterministic modules are compiled with strict IEEE flags. Same seed + same parameter/input sequence ⇒ the same events.
+- The event fingerprint (FNV-1a over step, layer, note and velocity of every event) was verified **identical on the PSP build
+  (in PPSSPP) and the x86-64 host** (`713db168` for PATROL seed 4817, 60 s). Different environmental conditions deliberately
+  produce different music; identical output is only promised for identical inputs.
+- Re-seeding while playing takes effect at the next bar: patterns and motifs are regenerated, drones crossfade, but smoothed
+  world/parameter state carries over, so the music turns rather than restarts.
+
+## 4. The world controls the music (`src/game/env_bridge.c`)
+| Input | Effect |
+|---|---|
+| **Altitude** | high: less rhythm and bass, slower harmony, longer/wider reverb, brighter shimmer; low: more bass, percussion, machine hum, brighter detail |
+| **Speed** | fast: more percussion (slow 25 s average, so hovering *gradually* thins it) and pulse; hover: longer drones, slower chords |
+| **District** | profile blend over ~12 s: tempo factor, mode (Civic aeolian, Works phrygian, Stacks dorian, Undertow suspended), wave choices, cutoffs, reverb size, delay time, layer biases, swing, metal, stab probability, hum |
+| **Rain** | rain-noise texture level, darker global filter, more delay feedback and send, more ambience |
+| **Fog** | texture level |
+| **Pursuit** (follow/pursue missions) | +10 % tempo, denser pulse and percussion, darker mode, tension tones, shorter sections, no SILENCE |
+| **Traffic** | pulse energy and hum |
+| **Enclosure** (8 rays, 55 m) | percussion energy |
+| **Scanner / signal** | fragment probability |
+| **Landmark proximity** | see below |
+
+Everything is smoothed (2.5–25 s time constants per step, ~2.5 s on gains, 0.4 s on filters) — no jumps.
+
+### Sonic landmarks
+| Landmark | District | Musical transformation |
+|---|---|---|
+| The Choir Tower | Stacks | pads switch to the VOX wavetable with slow vibrato, harmony energy up, percussion and pulse down, longer reverb, choir motif |
+| Station Nine | Works | mechanical Euclidean clicks (7/16) and metal hits (5/16) lock to the grid, percussion up |
+| The Memory Archive | Civic | its motif returns repeatedly; each repeat adds radio degradation and drops more notes |
+| The Black Reservoir | Undertow | sub-octave drone, long metallic resonance on percussion, harmony recedes, longer reverb |
+| The Silent Exchange | Undertow | layers disappear in order — percussion, pulse, harmony, atmosphere — leaving near-silence and faint fragments |
+
+## 5. Parameters (Signal Console)
+Core: master, six layer volumes, density, darkness, motion, tempo (50–140), key, mode (or *district*), filter, delay, ambience, seed.
+Advanced: pad wave, detune, drone root (±7 st), cutoff, LFO rate, harmonic complexity, rhythm probability, sequence variation,
+melody probability, delay feedback, modulation depth. Presets: PATROL, PURSUIT, DRIFT (always), ARCHIVE, CHOIR, RESERVOIR,
+NULL ZONE (unlocked on patrol), four user slots, eight seed slots. All changes are smoothed by the engine.
+
+## 6. Threading on the PSP (`src/platform/psp/audio_out.c`)
+A thread at priority 0x10 (above the game thread) renders 512 engine frames, mixes SFX (the Moth's engine hum is tuned to the
+current key centre), upsamples to 1024 frames and blocks on `sceAudioOutputPannedBlocking`; double-buffered. Parameters and
+world inputs arrive through a sequence-locked mailbox; the UI reads `MusicViz` (scope, meters, voice mask, layer levels,
+section, chord, events) tear-tolerantly.
+
+## 7. Measured behaviour (see TESTING.md)
+- 30-minute DRIFT render with district/weather changes: 27 section changes, 56 chord changes, all section types used,
+  no clipping, no NaN, 0 repeated 8-bar windows (event-hash comparison), max 22 voices.
+- Audio thread load in PPSSPP: 17–27 % of real time (emulated clock — indicative only, not a hardware measurement).
+
+## Reference renders
+Rendered with `sh tools/render_previews.sh` (`--flight` = deterministic simulated flight that varies altitude/speed/canyon).
+
+| # | Title | Command (abridged) | Length | Events | Fingerprint | Peak / RMS |
+|---|---|---|---|---|---|---|
+| 1 | Civic Centre | `--seed 4817 --preset patrol --district civic --altitude 0.55 --speed 0.4 --rain 0.3 --flight` | 6:00 | 706 | 3cf637bf | −5.3 / −24.1 dBFS |
+| 2 | The Works | `--seed 9113 --preset patrol --district works --altitude 0.2 --speed 0.65 --canyon 0.7 --traffic 0.5 --darkness 0.65` | 6:00 | 1857 | 3a3a7b2f | −2.8 / −20.6 dBFS |
+| 3 | The Stacks | `--seed 2146 --preset drift --district stacks --altitude 0.45 --speed 0.3 --rain 0.7 --landmark choir --prox 0.35` | 7:00 | 365 | 435080c8 | −10.2 / −25.5 dBFS |
+| 4 | The Undertow | `--seed 333 --preset reservoir --district undertow --altitude 0.15 --speed 0.1 --fog 0.9 --landmark reservoir --prox 0.6` | 7:00 | 97 | ef1b9283 | −8.9 / −24.9 dBFS |
+| 5 | Drift | `--seed 2146 --preset drift --district stacks --rain 0.4 --flight` | 20:00 | 999 | f2fbc09d | −8.3 / −23.7 dBFS |
+
+Full logs: `docs/validation/render_*.log`. WAVs: 44.1 kHz, 16-bit stereo.

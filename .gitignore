@@ -9,3 +9,4 @@ tools/validation/m1_hello/hush_m1*
 __pycache__/
 release/HUSH_by_Synth_Centric/
 release/*.zip
+release/host_tests.log

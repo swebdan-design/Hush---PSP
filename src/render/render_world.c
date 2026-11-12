@@ -250,7 +250,7 @@ static int sphere_visible(V3 c, float r, float far_d) {
 }
 
 static void ground_plane(const World *w, const Atmos *a, float y, const Tex *t, uint32_t col, float uvscale, float uoff, float voff) {
-    const int N = 12;
+    const int N = 24;   /* ~77 m tiles: smaller triangles are safer against GE near-plane rejection */
     float s = 2.0f * (WORLD_HALF + 300.0f) / (float)N, o = -(WORLD_HALF + 300.0f);
     gfx_bind(t, 1, 1);
     for (int j = 0; j < N; j++) {

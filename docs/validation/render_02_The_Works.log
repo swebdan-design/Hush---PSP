@@ -1,0 +1,25 @@
+HUSH render: preset=PATROL seed=9113 rate=44100 length=360.0s district=THE WORKS
+  inputs: altitude=0.20 speed=0.65 rain=0.00 fog=0.30 pursuit=0.00 traffic=0.50 canyon=0.70 landmark=none prox=0.00
+  params: tempo=88 key=A mode=AUTO density=0.50 darkness=0.65 motion=0.50 complexity=0.45
+  [   0.0s] bar    0  section -> EMERGENCE     (16 bars)  key A AEOLIAN
+  [  46.1s] bar   16  section -> FRAGMENTATION (12 bars)  key A PHRYGIAN
+  minute   1: peak  -6.10 dBFS  rms -25.30 dBFS  tempo 81.0  erosion 0.54
+  [  81.6s] bar   28  section -> SUSTAIN       (24 bars)  key A PHRYGIAN
+  minute   2: peak  -3.42 dBFS  rms -18.75 dBFS  tempo 81.0  erosion 0.45
+  [ 152.8s] bar   52  section -> FRAGMENTATION (12 bars)  key A PHRYGIAN
+  minute   3: peak  -3.21 dBFS  rms -19.32 dBFS  tempo 81.0  erosion 0.59
+  [ 188.3s] bar   64  section -> SUSTAIN       (24 bars)  key A PHRYGIAN
+  minute   4: peak  -3.50 dBFS  rms -19.41 dBFS  tempo 81.0  erosion 0.45
+  [ 259.4s] bar   88  section -> FRAGMENTATION (12 bars)  key A PHRYGIAN
+  [ 295.0s] bar  100  section -> DISSOLUTION   (12 bars)  key A PHRYGIAN
+  minute   5: peak  -2.82 dBFS  rms -19.78 dBFS  tempo 81.0  erosion 0.65
+  [ 330.5s] bar  112  section -> EMERGENCE     (8 bars)  key A PHRYGIAN
+  [ 354.2s] bar  120  section -> FRAGMENTATION (12 bars)  key A PHRYGIAN
+  minute   6: peak  -7.38 dBFS  rms -25.33 dBFS  tempo 81.0  erosion 0.60
+  events: total 1857  atmos 12 harmony 123 pulse 1061 perc 645 frag 13 decay 3
+  structure: bars 122  section changes 9  chord changes 24  key moves 0  motifs new/recalled/varied 0/1/2
+  sections: EMERGENCE=2 ACCUMULATION=0 SUSTAIN=2 FRAGMENTATION=4 DISSOLUTION=1 SILENCE=0 RENEWAL=0
+  voices: max simultaneous 29  steals 0
+  level: peak -2.82 dBFS  rms -20.55 dBFS  clipped samples 0  near-silent blocks 0.0%  NaN 0
+  speed: 58.9x realtime at 44100 Hz (6.11s CPU)
+SUMMARY seed=9113 preset=PATROL seconds=360 events=1857 hash=3a3a7b2f peak_db=-2.82 rms_db=-20.55 clip=0 nan=0 out=build/audio/02_The_Works.wav

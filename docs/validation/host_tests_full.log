@@ -1,0 +1,31 @@
+[saves] round trip, corruption, truncation
+[world] generation, routes and points of interest
+  fingerprint c82d5275
+  CIVIC CENTRE  boxes  917 cyls  6 lights 549 ads 14 lanes  8 pois 10 refs 1827
+  fingerprint 41ee45ef
+  THE WORKS     boxes  351 cyls 12 lights  95 ads  0 lanes  3 pois 26 refs 1125
+  fingerprint 906ea7ce
+  THE STACKS    boxes 1459 cyls  1 lights 784 ads  6 lanes  6 pois  9 refs 2305
+  fingerprint 1b66b71d
+  THE UNDERTOW  boxes  504 cyls 13 lights 171 ads  0 lanes  1 pois  9 refs 1109
+[flight] frame-rate independence, hover, collision
+[bridge] world drives music inputs
+[missions] autopilot plays all 12 missions through the real game logic
+   1 FIRST WATCH          CIVIC CENTRE COMPLETED in   360s (hull 100)
+   2 UNLICENSED WEATHER   CIVIC CENTRE COMPLETED in   171s (hull 100)
+   3 COURIER              CIVIC CENTRE COMPLETED in   141s (hull 100)
+   4 SILENCE ALLOWANCE    THE STACKS   COMPLETED in   123s (hull 100)
+   5 PIRATE CHOIR         THE STACKS   COMPLETED in   115s (hull 100)
+   6 THE ARCHIVED WOMAN   THE STACKS   COMPLETED in    43s (hull 100)
+   7 HAZARD CORRIDOR      THE WORKS    COMPLETED in    62s (hull 100)
+   8 STATION NINE         THE WORKS    COMPLETED in   100s (hull 100)
+   9 LOW FREQUENCY        THE WORKS    COMPLETED in    48s (hull 100)
+  10 BLACK RESERVOIR      THE UNDERTOW COMPLETED in    84s (hull 100)
+  11 RECOVERY             THE UNDERTOW COMPLETED in   142s (hull 100)
+  12 THE SILENT EXCHANGE  THE UNDERTOW COMPLETED in    63s (hull 100)
+[audio] determinism, seeds, levels, presets
+[audio] 30-minute stability, structure and repetition
+  30 min: bars 465, sections 27, chords 56, motifs new/recall/var 7/9/6, max voices 22, steals 0, 58 windows, 0 dup
+
+123 checks passed, 0 failed
+EXIT=0

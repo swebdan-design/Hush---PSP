@@ -1,0 +1,24 @@
+HUSH render: preset=RESERVOIR seed=333 rate=44100 length=420.0s district=THE UNDERTOW
+  inputs: altitude=0.15 speed=0.10 rain=0.00 fog=0.90 pursuit=0.00 traffic=0.30 canyon=0.30 landmark=THE BLACK RESERVOIR prox=0.60
+  params: tempo=60 key=C# mode=LOCRIAN density=0.20 darkness=0.85 motion=0.50 complexity=0.45
+  [   0.0s] bar    0  section -> EMERGENCE     (12 bars)  key C# LOCRIAN
+  minute   1: peak  -8.88 dBFS  rms -23.88 dBFS  tempo 43.3  erosion 0.72
+  [  60.6s] bar   12  section -> SILENCE       (12 bars)  key C# LOCRIAN
+  minute   2: peak  -9.69 dBFS  rms -28.55 dBFS  tempo 43.3  erosion 0.93
+  [ 127.2s] bar   24  section -> RENEWAL       (8 bars)  key C# LOCRIAN
+  [ 171.6s] bar   32  section -> ACCUMULATION  (12 bars)  key G# LOCRIAN
+  minute   3: peak -10.03 dBFS  rms -25.49 dBFS  tempo 43.3  erosion 0.72
+  [ 238.2s] bar   44  section -> SUSTAIN       (16 bars)  key G# LOCRIAN
+  minute   4: peak -11.00 dBFS  rms -26.00 dBFS  tempo 43.3  erosion 0.69
+  minute   5: peak  -9.68 dBFS  rms -24.15 dBFS  tempo 43.3  erosion 0.67
+  [ 326.9s] bar   60  section -> DISSOLUTION   (12 bars)  key G# LOCRIAN
+  minute   6: peak  -9.61 dBFS  rms -24.12 dBFS  tempo 43.3  erosion 0.94
+  [ 393.5s] bar   72  section -> EMERGENCE     (12 bars)  key G# LOCRIAN
+  minute   7: peak  -9.57 dBFS  rms -24.00 dBFS  tempo 43.3  erosion 0.83
+  events: total 97  atmos 18 harmony 24 pulse 18 perc 4 frag 30 decay 3
+  structure: bars 77  section changes 7  chord changes 7  key moves 1  motifs new/recalled/varied 0/7/1
+  sections: EMERGENCE=2 ACCUMULATION=1 SUSTAIN=1 FRAGMENTATION=0 DISSOLUTION=1 SILENCE=1 RENEWAL=1
+  voices: max simultaneous 14  steals 1
+  level: peak -8.88 dBFS  rms -24.93 dBFS  clipped samples 0  near-silent blocks 0.0%  NaN 0
+  speed: 88.9x realtime at 44100 Hz (4.72s CPU)
+SUMMARY seed=333 preset=RESERVOIR seconds=420 events=97 hash=ef1b9283 peak_db=-8.88 rms_db=-24.93 clip=0 nan=0 out=build/audio/04_The_Undertow.wav

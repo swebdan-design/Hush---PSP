@@ -1,0 +1,25 @@
+HUSH render: preset=PATROL seed=4817 rate=44100 length=360.0s district=CIVIC CENTRE (simulated flight)
+  inputs: altitude=0.55 speed=0.40 rain=0.30 fog=0.30 pursuit=0.00 traffic=0.30 canyon=0.30 landmark=none prox=0.00
+  params: tempo=88 key=A mode=AUTO density=0.50 darkness=0.50 motion=0.50 complexity=0.45
+  [   0.0s] bar    0  section -> EMERGENCE     (12 bars)  key A AEOLIAN
+  [  32.7s] bar   12  section -> SUSTAIN       (32 bars)  key A AEOLIAN
+  minute   1: peak  -5.97 dBFS  rms -24.44 dBFS  tempo 88.0  erosion 0.25
+  [ 120.0s] bar   44  section -> FRAGMENTATION (8 bars)  key A AEOLIAN
+  minute   2: peak  -5.27 dBFS  rms -22.73 dBFS  tempo 88.0  erosion 0.24
+  [ 141.8s] bar   52  section -> DISSOLUTION   (8 bars)  key A AEOLIAN
+  [ 163.7s] bar   60  section -> RENEWAL       (8 bars)  key A AEOLIAN
+  minute   3: peak  -8.56 dBFS  rms -24.53 dBFS  tempo 88.0  erosion 0.37
+  [ 185.5s] bar   68  section -> ACCUMULATION  (16 bars)  key A AEOLIAN
+  [ 229.1s] bar   84  section -> FRAGMENTATION (24 bars)  key A AEOLIAN
+  minute   4: peak  -7.30 dBFS  rms -23.16 dBFS  tempo 88.0  erosion 0.31
+  [ 294.6s] bar  108  section -> DISSOLUTION   (16 bars)  key A AEOLIAN
+  minute   5: peak  -7.27 dBFS  rms -23.98 dBFS  tempo 88.0  erosion 0.48
+  [ 338.2s] bar  124  section -> RENEWAL       (12 bars)  key E AEOLIAN
+  minute   6: peak -10.32 dBFS  rms -26.56 dBFS  tempo 88.0  erosion 0.38
+  events: total 706  atmos 20 harmony 126 pulse 406 perc 131 frag 21 decay 2
+  structure: bars 132  section changes 9  chord changes 18  key moves 1  motifs new/recalled/varied 3/3/0
+  sections: EMERGENCE=1 ACCUMULATION=1 SUSTAIN=1 FRAGMENTATION=2 DISSOLUTION=2 SILENCE=0 RENEWAL=2
+  voices: max simultaneous 22  steals 0
+  level: peak -5.27 dBFS  rms -24.07 dBFS  clipped samples 0  near-silent blocks 0.0%  NaN 0
+  speed: 67.9x realtime at 44100 Hz (5.31s CPU)
+SUMMARY seed=4817 preset=PATROL seconds=360 events=706 hash=3cf637bf peak_db=-5.27 rms_db=-24.07 clip=0 nan=0 out=build/audio/01_Civic_Centre.wav

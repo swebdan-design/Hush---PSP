@@ -1,0 +1,11 @@
+@page { size: A5; margin: 16mm 14mm; }
+body { font-family: "Inter", "DejaVu Sans", sans-serif; font-size: 9.5pt; line-height: 1.45; color: #1c2026; }
+h1 { font-weight: 300; letter-spacing: 0.06em; font-size: 17pt; border-bottom: 1px solid #aab; padding-bottom: 3pt; margin-top: 18pt; page-break-before: always; }
+header h1.title { page-break-before: avoid; font-size: 30pt; letter-spacing: 0.35em; text-align: center; border: none; }
+p.subtitle { text-align: center; color: #556; letter-spacing: 0.08em; }
+img { width: 100%; }
+table { border-collapse: collapse; width: 100%; font-size: 8.5pt; margin: 6pt 0; }
+th, td { border-bottom: 1px solid #ccd; padding: 3pt 4pt; text-align: left; vertical-align: top; }
+th { background: #eef0f4; }
+code { font-family: "DejaVu Sans Mono", monospace; font-size: 8.5pt; }
+em { color: #444; }

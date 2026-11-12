@@ -1,0 +1,24 @@
+HUSH render: preset=DRIFT seed=2146 rate=44100 length=420.0s district=THE STACKS
+  inputs: altitude=0.45 speed=0.30 rain=0.70 fog=0.30 pursuit=0.00 traffic=0.30 canyon=0.30 landmark=THE CHOIR TOWER prox=0.35
+  params: tempo=72 key=A mode=AUTO density=0.25 darkness=0.45 motion=0.30 complexity=0.50
+  [   0.0s] bar    0  section -> EMERGENCE     (12 bars)  key A AEOLIAN
+  [  44.0s] bar   12  section -> FRAGMENTATION (24 bars)  key A DORIAN
+  minute   1: peak -13.52 dBFS  rms -27.09 dBFS  tempo 62.0  erosion 0.41
+  minute   2: peak -12.46 dBFS  rms -27.05 dBFS  tempo 62.0  erosion 0.48
+  [ 136.9s] bar   36  section -> SUSTAIN       (28 bars)  key A DORIAN
+  minute   3: peak -11.55 dBFS  rms -25.54 dBFS  tempo 62.0  erosion 0.29
+  minute   4: peak -11.19 dBFS  rms -24.80 dBFS  tempo 62.0  erosion 0.25
+  [ 245.3s] bar   64  section -> SILENCE       (4 bars)  key A DORIAN
+  [ 260.8s] bar   68  section -> RENEWAL       (16 bars)  key A DORIAN
+  minute   5: peak -11.17 dBFS  rms -25.94 dBFS  tempo 62.0  erosion 0.33
+  [ 322.7s] bar   84  section -> SUSTAIN       (24 bars)  key E DORIAN
+  minute   6: peak -10.64 dBFS  rms -24.50 dBFS  tempo 62.0  erosion 0.29
+  [ 415.6s] bar  108  section -> FRAGMENTATION (28 bars)  key E DORIAN
+  minute   7: peak -10.19 dBFS  rms -24.31 dBFS  tempo 62.0  erosion 0.32
+  events: total 365  atmos 15 harmony 96 pulse 170 perc 35 frag 46 decay 3
+  structure: bars 110  section changes 7  chord changes 12  key moves 1  motifs new/recalled/varied 1/9/1
+  sections: EMERGENCE=1 ACCUMULATION=0 SUSTAIN=2 FRAGMENTATION=2 DISSOLUTION=0 SILENCE=1 RENEWAL=1
+  voices: max simultaneous 19  steals 0
+  level: peak -10.19 dBFS  rms -25.48 dBFS  clipped samples 0  near-silent blocks 0.0%  NaN 0
+  speed: 74.2x realtime at 44100 Hz (5.66s CPU)
+SUMMARY seed=2146 preset=DRIFT seconds=420 events=365 hash=435080c8 peak_db=-10.19 rms_db=-25.48 clip=0 nan=0 out=build/audio/03_The_Stacks.wav
