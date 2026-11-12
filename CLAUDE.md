@@ -17,6 +17,10 @@ Modes: **PATROL** (12 missions), **DRIFT** (free flight), **SIGNAL CONSOLE** (th
   this caused a real cross-platform divergence once). Draw into locals in a fixed order.
 - Mission-critical places are explicit in `src/game/world.c` and reserved before procedural fill.
 - Textures for the GE must be power-of-two sized. `sceGuSetDither` must not be called with NULL.
+- Handedness: right-handed world, Y up; screen-right looking along +Z is -X. `craft_right()` = forward x up;
+  positive yaw input = turn right = yaw decreases; compass heading = -yaw. Tests enforce this.
+- Save format: append new fields at the end of the payload and read them only `if (r.n < r.len)` so old saves load.
+- Display list is 1 MB per frame: cap any per-frame dynamic geometry (crowd capped at 40 near + 80 far figures).
 - Colours on the GE are ABGR (`RGBA()` macro in gfx.h does the packing). `sceGuDepthMask(GU_TRUE)` *disables* depth writes.
 
 ## Layout
@@ -52,7 +56,9 @@ Emulator: PPSSPPHeadless built from hrydgard/ppsspp (needs SDL3 + SDL3_ttf built
 
 ## Status (see docs/TESTING.md for evidence)
 Implemented and validated in PPSSPP: all modes, 4 districts, 12 missions (all completed by the autopilot
-in the PSP build), saves, Signal Console, 5 sonic landmarks, weather, traffic, 3 cameras.
+in the PSP build), saves, Signal Console, 5 sonic landmarks, weather, traffic, 3 cameras, street level
+(shopfronts, neon, street traffic, pedestrians), story layer (prologue, operator's log, case file, chatter),
+face-button (default) and classic control schemes.
 Not done: real-hardware testing; PDF manual depends on Chromium being present.
 
 ## Known limitations

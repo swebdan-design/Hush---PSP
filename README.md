@@ -23,7 +23,12 @@ composed and synthesised as you fly.
 - Four navigable 3D districts generated from fixed seeds — **Civic Centre**, **The Works**, **The Stacks**, **The Undertow** — with
   lit-window facades, aviation lights, adverts, elevated highways, cooling towers, chimneys, walkways, flooded streets.
 - Arcade hover physics with inertia, hover stabilisation, boost, brake, collision, banking; chase, cockpit and cinematic cameras.
+- **Street level**: descend between the towers to rain-slick streets lined with lit shopfronts, hanging neon blade signs,
+  holographic billboards, dashed lanes, street traffic and **pedestrians** with glowing umbrellas who scatter from your downwash.
+- Neon everywhere: roof outlines, corner strips, billboards in every district, wet-street reflections, violet/red/magenta haze.
 - Living city: lane-following aerial and ground traffic, patrol craft, steam vents, rain, fog, twilight.
+- **Story**: a prologue, 12 missions with briefings and radio, an Operator's Log after each mission, a Case File to reread
+  them, and overheard street chatter that changes as the investigation unfolds.
 - Generative music engine: six interacting layers (atmosphere, harmony, pulse, percussion, fragments, decay), band-limited
   wavetable synthesis, FM, SVF filters, dub delay, FDN ambience, chorus, radio degradation; long-form sections; motif memory;
   deterministic seeds. The world drives it: altitude, speed, district, rain, fog, pursuit, traffic, enclosure, scanning.
@@ -38,8 +43,9 @@ composed and synthesised as you fly.
 **Real PSP (custom firmware):** copy `release/HUSH_by_Synth_Centric/PSP/GAME/HUSH/` to `ms0:/PSP/GAME/HUSH/` and launch from *Game › Memory Stick*.
 **PPSSPP:** *Load…* → `EBOOT.PBP`.
 
-Controls (summary — full list in [docs/CONTROLS.md](docs/CONTROLS.md)): nub = fly/strafe, L/R = turn, D-pad up/down = altitude,
-✕ boost, □ brake, △ scan, ○ action/EMP, SELECT camera, START pause/Signal Console.
+Controls (default face-button scheme — full list in [docs/CONTROLS.md](docs/CONTROLS.md)): nub = fly/strafe, L/R = turn,
+△ ascend, ✕ descend, □ boost, ○ scan (hold) / EMP (press), D-pad ↓ brake, D-pad ↑ HUD, SELECT camera, START pause.
+A *Classic* scheme (altitude on the D-pad) is in Options.
 
 ## Building
 See [docs/BUILD.md](docs/BUILD.md). In short, with PSPDEV installed at `/usr/local/pspdev`:

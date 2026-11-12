@@ -1,25 +1,42 @@
 # HUSH — Controls
 
-## In flight
+## In flight — FACE BUTTONS scheme (default)
 | Input | Action |
 |---|---|
 | Analogue nub up/down | Fly forward / backward |
 | Analogue nub left/right | Strafe left / right |
-| L / R | Turn (yaw) left / right |
-| D-pad Up / Down | Ascend / descend (swap with *Options › Invert altitude*) |
-| D-pad Left / Right | Tilt the camera up / down |
-| ✕ Cross (hold) | Boost — while moving forward; drains the boost gauge, which recharges |
-| □ Square (hold) | Brake and stabilise |
-| △ Triangle (hold) | Scanner — scan objectives; identify sonic landmarks |
-| ○ Circle | Context action / EMP (once fitted, during pursuits) |
+| L / R | Turn left / right |
+| △ Triangle (hold) | Ascend |
+| ✕ Cross (hold) | Descend — all the way down to street level |
+| □ Square (hold) | Boost — while moving forward; the gauge drains and recharges |
+| ○ Circle | Hold: scanner (objectives, sonic landmarks). Press: EMP / context action |
+| D-pad Down (hold) | Brake and stabilise |
+| D-pad Up | Cycle the HUD: full → minimal → off |
+| D-pad Left / Right | Tilt the camera |
 | SELECT | Camera: chase → cockpit → cinematic |
-| START | Pause menu (Resume, Signal Console, camera, HUD, district/weather/time in Drift, restart, save, quit) |
+| START | Pause menu |
 
-Releasing all controls leaves the Moth hovering in place; you never need to keep moving to stay airborne.
-No simultaneous button combinations are required.
+Altitude lives on the right thumb so the left thumb never has to leave the nub.
+
+## In flight — CLASSIC scheme (Options › Control scheme)
+| Input | Action |
+|---|---|
+| Analogue nub | Fly / strafe |
+| L / R | Turn |
+| D-pad Up / Down | Ascend / descend (swap with *Options › Invert altitude*) |
+| D-pad Left / Right | Tilt the camera |
+| ✕ Cross (hold) | Boost |
+| □ Square (hold) | Brake |
+| △ Triangle (hold) | Scanner |
+| ○ Circle | Context action / EMP |
+| SELECT / START | Camera / pause |
+
+Releasing all controls leaves the Moth hovering in place. A legend of the current scheme appears for the
+first seconds of every flight. Story text always names the buttons of the scheme you chose.
 
 ## Menus
 D-pad up/down to choose, left/right to change a value, ✕ to confirm, ○ to go back.
+In the assignment list, △ opens the **Case File** (prologue and operator's log). In the prologue, ✕ advances and START skips.
 
 ## Signal Console
 | Input | Action |

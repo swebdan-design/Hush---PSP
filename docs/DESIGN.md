@@ -43,6 +43,24 @@ The audio thread is independent and higher priority.
 | The Stacks | dense residential canyons, gardens | Choir Tower | hanging walkways, illegal rooftop transmitters, narrow traffic lanes |
 | The Undertow | flooded lower city, heavy fog | Black Reservoir, Silent Exchange | water with reflections, ruins, pylons, the hollow exchange shaft |
 
+## Street level (`world.c`, `crowd.c`, `render_world.c`, `render_crowd.c`)
+- Every city block gets a raised sidewalk slab and is recorded as a pedestrian loop. Ground-floor facades get a 7 m band
+  of lit shopfronts (a 512x64 atlas of four fronts). Lots are decorated by a *separate* random stream seeded from their
+  position: hanging blade signs, flat shop signs, roof neon outlines and corner strips, so decor never moves a building.
+- Billboards on tall towers in every district; neon tubes drawn as additive lines; dashed lane markings generated around a
+  low camera; rain-slick streets reflect street-level lights (the reflection is placed where the eye→mirror ray meets the
+  street, so it depth-tests correctly).
+- Street traffic: candidate rectangles on the street grid are kept only if a car-sized sphere at every sample (centre and
+  both lane offsets) is collision-free.
+- Pedestrians: up to 200 per district walk the sidewalk loops 0.9 m from the kerb (buildings sit ≥ 1.5 m back), loiter at
+  windows, raise umbrellas in rain and flee a Moth below 14 m within 18 m. Walkers far from the player are recycled onto
+  blocks near the player, so the street is always populated. Rendering: articulated figures (≤ 40 detailed, ≤ 80 simple,
+  ~100 KB of display list at most), glowing umbrella rims via the light batch.
+
+## Handedness
+The world is right-handed with Y up; looking along +Z, screen-right is −X. `craft_right()` returns forward × up, positive
+yaw input turns right (yaw decreases), and the compass shows heading = −yaw. Host tests pin this down.
+
 ## Flight model (`src/game/flight.c`)
 Fixed 60 Hz sub-steps (frame-rate independent; verified 30 fps and 60 fps paths agree within 0.5 m). Acceleration in the
 craft frame (forward 30 m/s², ×2.1 boosting; strafe 21; vertical 18), linear drag (0.75/s horizontal, 2.2/s vertical, more
@@ -74,6 +92,12 @@ contact → Retry/Abandon. Rewards are applied on completion and the game autosa
 | 12 | The Silent Exchange | Undertow | descend, scan, and listen | NULL ZONE preset, ending |
 
 Progression never locks essentials: Drift (all districts), the Signal Console and three presets are available from the start.
+
+## Story delivery
+Prologue (7 cards over a Civic flyover, first Patrol only, replayable), mission briefings and radio, debrief, an
+Operator's Log entry after each mission (`story.c`), the Case File screen, and overheard chatter: hover low and slow
+near pedestrians to catch a line from a pool that advances through five acts with the campaign, mixed with everyday satire.
+Button names in story text are tokens (`[UP]`, `[SCAN]`…) substituted for the player's control scheme.
 
 ## Narrative
 An unlicensed musical carrier on 61.7 MHz cannot be traced to a transmitter. The trail runs through a confiscated rain

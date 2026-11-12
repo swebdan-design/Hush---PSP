@@ -48,26 +48,30 @@ head under the nose and skids for landing. It does not stall. **Release every co
 - Red (port) and green (starboard) running lights, a white tail strobe and an amber scanner light mark your position.
 - **Hull**: collisions above walking pace and live steam vents damage it. In Patrol, a destroyed hull fails the mission;
   in Drift it slowly self-repairs.
-- **Boost**: hold ✕ while flying forward. The gauge drains and recharges.
-- **Scanner**: hold △ facing a target with a clear line of sight. A sweeping beam shows it is active.
+- **Boost**: hold □ while flying forward. The gauge drains and recharges.
+- **Scanner**: hold ○ facing a target with a clear line of sight. A sweeping beam shows it is active.
 - **EMP**: fitted from the mission *The Archived Woman*. Press ○ within about 35 m of a hostile drone.
 
 Engine hum is tuned to the current key of the music. Your craft is part of the composition.
 
 # 5. Flight controls
 
-| Input | Action |
+| Input | Action (default *face buttons* scheme) |
 |---|---|
 | Analogue nub | Forward/back and strafe |
 | L / R | Turn |
-| D-pad ↑ / ↓ | Climb / descend |
+| △ (hold) | Climb |
+| ✕ (hold) | Descend — right down to the street |
+| □ (hold) | Boost |
+| ○ | Hold to scan; press for the EMP / context action |
+| D-pad ↓ (hold) | Brake |
+| D-pad ↑ | Cycle the HUD |
 | D-pad ← / → | Tilt the camera |
-| ✕ (hold) | Boost |
-| □ (hold) | Brake |
-| △ (hold) | Scan |
-| ○ | Action / EMP |
 | SELECT | Chase → cockpit → cinematic camera |
 | START | Pause menu |
+
+Prefer altitude on the D-pad? Choose *Options › Control scheme › Classic* (D-pad ↑/↓ climb and descend, ✕ boost,
+□ brake, △ scan, ○ action). Mission instructions always name the buttons of your chosen scheme.
 
 **Cameras.** *Chase* follows behind and pulls in to avoid walls. *Cockpit* puts you behind the canopy with a full
 instrument panel: attitude indicator, speed, altitude, hull and boost, radar, signal meter and a live oscilloscope of the
@@ -79,6 +83,10 @@ Options offer FULL, MINIMAL and OFF.
 
 **Tips.** Hover is precise: tap the nub to edge forward. Brake before corners in the Stacks. Climb above the skyline to
 travel, then descend between the towers.
+
+**Street level.** Hold ✕ and keep descending: the Moth will settle a few metres above the road. Down there the city is
+loud with light — shopfronts, hanging neon signs, street traffic, and people under glowing umbrellas going about their
+night. They will run if you come in too low. Hover slowly near them and you may overhear what Vesper is talking about.
 
 # 6. Patrol Mode
 
@@ -94,8 +102,14 @@ marks the target (with distance), and an arrow points the way when it is off scr
 - **Recovering** data fragments by flying through them.
 - **Investigating** sonic landmarks.
 
+When you choose PATROL for the first time, a short **prologue** sets the scene (✕ to advance, START to skip).
+
 If you fail, choose **Retry** or **Abandon**. Completing an assignment saves your progress and may unlock a district, an
 upgrade (scanner range, boost, hull), a synthesizer waveform, a preset or a paint scheme.
+
+**Operator's Log and Case File.** After each debrief, Operator Seven writes a short log entry. In the assignment list,
+press △ to open the **Case File**: replay the prologue and reread every log entry and debrief. What people on the street
+say also changes as the investigation goes on.
 
 # 7. Drift Mode
 
@@ -104,7 +118,7 @@ No objectives, no timers. Choose a district (all four are open), weather (clear,
 the weather changes, and the music never stops. The pause menu lets you change district, weather and time, open the Signal
 Console, switch camera and hide the HUD.
 
-Hold △ near a sonic landmark to identify it; it is then written into the **Journal**.
+Hold the scanner button (○, or △ in the Classic scheme) near a sonic landmark to identify it; it is then written into the **Journal**.
 
 # 8. Signal Console
 
@@ -174,7 +188,7 @@ at the next bar while the sound crossfades. Store favourites in the eight slots.
 | **The Black Reservoir** | The Undertow, south-west | a drone below the drone; metal ringing in a huge space |
 | **The Silent Exchange** | The Undertow, north-east | the layers leave one by one until almost nothing remains |
 
-Approach and the music changes gradually; hold △ to identify and log the landmark.
+Approach and the music changes gradually; hold the scanner to identify and log the landmark.
 
 # 13. Saving and loading
 

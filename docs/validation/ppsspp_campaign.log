@@ -1,41 +1,41 @@
 HUSH: boot, save: no save found
 AUTOTEST: determinism seed=4817 events=105 hash=713db168 (offline render of 60s took 10673 ms emulated)
-AUTOTEST: world 0 fingerprint c82d5275 boxes 917
-AUTOTEST: world 1 fingerprint 41ee45ef boxes 351
-AUTOTEST: world 2 fingerprint 906ea7ce boxes 1459
+AUTOTEST: world 0 fingerprint 98ba1ebd boxes 1042
+AUTOTEST: world 1 fingerprint 69e806eb boxes 426
+AUTOTEST: world 2 fingerprint 2a3c3d37 boxes 1770
 AUTOTEST: world 3 fingerprint 1b66b71d boxes 504
 HUSH: music engine ready in 1.3 ms (seed 4817)
-HUSH: district THE STACKS generated in 3.3 ms, mesh 93438 verts built in 60.9 ms (boxes 1459, lights 784)
-HUSH: district CIVIC CENTRE generated in 2.4 ms, mesh 65616 verts built in 44.5 ms (boxes 917, lights 549)
+HUSH: district THE STACKS generated in 10.5 ms, mesh 132564 verts built in 83.8 ms (boxes 1770, lights 1174)
+HUSH: district CIVIC CENTRE generated in 24.8 ms, mesh 86358 verts built in 51.8 ms (boxes 1042, lights 731)
 AUTOTEST: campaign start
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  1 FIRST WATCH          COMPLETE sim 399s hull 100 fps 30.0 tris 6074
+AUTOTEST: mission  1 FIRST WATCH          COMPLETE sim 399s hull 100 fps 29.8 tris 7850
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  2 UNLICENSED WEATHER   COMPLETE sim 190s hull 100 fps 30.0 tris 8364
+AUTOTEST: mission  2 UNLICENSED WEATHER   COMPLETE sim 190s hull 100 fps 30.0 tris 10644
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  3 COURIER              COMPLETE sim 149s hull 100 fps 29.9 tris 5500
-HUSH: district THE STACKS generated in 3.3 ms, mesh 93438 verts built in 99.1 ms (boxes 1459, lights 784)
+AUTOTEST: mission  3 COURIER              COMPLETE sim 149s hull 100 fps 29.3 tris 7292
+HUSH: district THE STACKS generated in 22.1 ms, mesh 132564 verts built in 137.0 ms (boxes 1770, lights 1174)
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  4 SILENCE ALLOWANCE    COMPLETE sim 135s hull 100 fps 30.0 tris 3180
+AUTOTEST: mission  4 SILENCE ALLOWANCE    COMPLETE sim 135s hull 100 fps 30.1 tris 5626
 AUTOTEST: screenshot hush_shot_00_campaign.bmp saved at t=113.0
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  5 PIRATE CHOIR         COMPLETE sim 125s hull 140 fps 30.0 tris 6050
+AUTOTEST: mission  5 PIRATE CHOIR         COMPLETE sim 125s hull 140 fps 30.0 tris 9692
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  6 THE ARCHIVED WOMAN   COMPLETE sim 47s hull 140 fps 30.1 tris 3548
-HUSH: district THE WORKS generated in 1.3 ms, mesh 23958 verts built in 21.7 ms (boxes 351, lights 95)
+AUTOTEST: mission  6 THE ARCHIVED WOMAN   COMPLETE sim 47s hull 140 fps 29.9 tris 6198
+HUSH: district THE WORKS generated in 61.6 ms, mesh 31992 verts built in 25.3 ms (boxes 426, lights 135)
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  7 HAZARD CORRIDOR      COMPLETE sim 62s hull 140 fps 30.0 tris 304
+AUTOTEST: mission  7 HAZARD CORRIDOR      COMPLETE sim 62s hull 140 fps 30.0 tris 448
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  8 STATION NINE         COMPLETE sim 100s hull 180 fps 30.1 tris 670
+AUTOTEST: mission  8 STATION NINE         COMPLETE sim 100s hull 180 fps 30.2 tris 906
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  9 LOW FREQUENCY        COMPLETE sim 48s hull 180 fps 30.0 tris 570
-AUTOTEST: screenshot hush_shot_01_campaign.bmp saved at t=163.4
-HUSH: district THE UNDERTOW generated in 1.4 ms, mesh 25554 verts built in 25.2 ms (boxes 504, lights 171)
+AUTOTEST: mission  9 LOW FREQUENCY        COMPLETE sim 48s hull 180 fps 30.0 tris 718
+AUTOTEST: screenshot hush_shot_01_campaign.bmp saved at t=163.3
+HUSH: district THE UNDERTOW generated in 1.6 ms, mesh 25554 verts built in 24.8 ms (boxes 504, lights 171)
 HUSH: PROGRESS SAVED
-AUTOTEST: mission 10 BLACK RESERVOIR      COMPLETE sim 84s hull 180 fps 30.2 tris 1086
+AUTOTEST: mission 10 BLACK RESERVOIR      COMPLETE sim 84s hull 180 fps 30.0 tris 1086
 HUSH: PROGRESS SAVED
 AUTOTEST: mission 11 RECOVERY             COMPLETE sim 142s hull 180 fps 30.0 tris 776
 HUSH: PROGRESS SAVED
-AUTOTEST: mission 12 THE SILENT EXCHANGE  COMPLETE sim 63s hull 180 fps 30.2 tris 1374
+AUTOTEST: mission 12 THE SILENT EXCHANGE  COMPLETE sim 64s hull 180 fps 30.2 tris 1374
 AUTOTEST: campaign 12/12 complete, missions_done=0xfff districts=0xf landmarks=0x1f
 HUSH: clean exit

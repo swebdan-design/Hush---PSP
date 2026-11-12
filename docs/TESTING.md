@@ -16,7 +16,11 @@ cycle-accurate, so its frame-rate and CPU figures are *indicative only*.
 | `make host` (renderer + tests) compiles with `-Wall -Wextra`, no warnings | pass |
 | Repeatable from clean (`rm -rf build && make`) | pass |
 
-## 2. Host test-suite (`make test-full`, 123 checks, all passing — `docs/validation/host_tests_full.log`)
+## 2. Host test-suite (`make test`: 126 checks; `make test-full` adds the 30-minute run — `docs/validation/host_tests_*.log`)
+- **Handedness** (added after a player reported mirrored strafe/turn): stick-right moves toward the camera's screen-right,
+  R turns the nose toward screen-right, banking matches, `craft_right == forward × up`.
+- **Crowd**: no pedestrian inside geometry after 60 s, the crowd gathers around the player, umbrellas in rain, flight from a
+  low Moth, nobody in the flooded Undertow. **Street lanes** are covered by the lane-clearance test.
 - **Saves**: round trip of every field; corruption, truncation, wrong magic and missing file are rejected and fall back to defaults.
 - **World**: deterministic generation for all four districts; spawn points free; every traffic/mission lane sampled every 4 m is
   collision-free (this test found and fixed three real routing conflicts during development); each district has a pad and a landmark.
@@ -39,6 +43,12 @@ Boot → title (attract flight) → main menu → Drift (Stacks, heavy rain) wit
 Patrol mission 6 (autopiloted, **completed in 46.6 s**, autosave) → **save reloaded from the Memory Stick** and verified →
 Drift in The Works, The Undertow (fog), Civic Centre (twilight) → standalone console → briefing → **clean exit**.
 Screenshots of every step are in `artwork/screenshots/`. 2732 audio blocks rendered, **0 late**.
+
+### 3a-bis. Street level and story (same run)
+The Moth is placed on a Stacks street in heavy rain: chase, cockpit and cinematic screenshots show shopfronts, neon signs,
+lane markings, street traffic, pedestrians with lit umbrellas and wet-street reflections (`artwork/screenshots/HUSH_14..16`).
+Then the Operator's Log, prologue and Case File screens (`HUSH_17..19`); the prologue sets `story_flags=1` in the save.
+A display-list overflow found here (crowd geometry ~460 KB) was fixed by capping rendered figures.
 
 ### 3b. Full campaign (`build/autotest-campaign/EBOOT.PBP`) — `docs/validation/ppsspp_campaign.log`
 All 12 missions played in order in the PSP build, autopiloted and fast-forwarded ×8 in simulation:
