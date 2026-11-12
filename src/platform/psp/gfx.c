@@ -14,6 +14,8 @@
 #include "../../assets/generated/logo.h"
 #include "../../assets/generated/credit.h"
 
+#include "diag.h"
+
 #define BUF_W 512
 #define LIST_BYTES (1024 * 1024)
 
@@ -45,6 +47,8 @@ void *gfx_vram_alloc(int bytes) {
     g_vram_next = at + (uint32_t)bytes;
     return (void *)((uint32_t)sceGeEdramGetAddr() + at);
 }
+
+int gfx_vram_used(void) { return (int)g_vram_next; }
 
 Tex gfx_tex_to_vram(Tex t) {
     int bpp = t.psm == GU_PSM_8888 ? 4 : 2;
@@ -104,9 +108,14 @@ void gfx_begin(uint32_t clear_color) {
     g_bound = NULL;
 }
 
+int gfx_list_peak, gfx_list_last;
+
 void gfx_end(int target_hz) {
+    gfx_list_last = sceGuCheckList();
+    if (gfx_list_last > gfx_list_peak) gfx_list_peak = gfx_list_last;
     sceGuFinish();
     uint64_t t0 = gfx_ticks_us();
+    diag_mark("gpu wait");
     sceGuSync(0, 0);
     uint64_t t1 = gfx_ticks_us();
     gfx_last_cpu_ms = (float)(t0 - g_frame_start) / 1000.0f;

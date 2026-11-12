@@ -110,22 +110,25 @@ AUTOTEST: world 1 fingerprint 69e806eb boxes 426
 AUTOTEST: world 2 fingerprint 2a3c3d37 boxes 1770
 AUTOTEST: world 3 fingerprint 1b66b71d boxes 504
 HUSH: music engine ready in 1.3 ms (seed 4817)
-HUSH: district THE STACKS generated in 10.6 ms, mesh 150678 verts built in 94.7 ms (boxes 1770, lights 1174)
+HUSH: district THE STACKS generated in 10.6 ms, mesh 150678 verts built in 95.2 ms (boxes 1770, lights 1174)
+HUSH: detail lowered to 2 (frame 60.1 ms)
 AUTOTEST: screenshot hush_shot_00_title.bmp saved at t=3.0
-AUTOTEST: perf title          fps 29.8 cpu 3.17ms gpuwait 4.56ms tris 15526 chunks 18 lights 100 vehicles 0 audio_load 16.2% audio_late 0/139 freemem 700KB
+AUTOTEST: perf title          fps 29.9 cpu 2.46ms gpuwait 1.77ms tris 12990 chunks 15 lights 78 vehicles 0 audio_load 15.9% audio_late 0/294 freemem 700KB list 120KB peak 138KB
 AUTOTEST: screenshot hush_shot_01_main_menu.bmp saved at t=4.2
 AUTOTEST: drift started
+HUSH: detail lowered to 1 (frame 71.9 ms)
+HUSH: detail lowered to 0 (frame 50.2 ms)
 AUTOTEST: screenshot hush_shot_02_drift_stacks_rain.bmp saved at t=10.2
-AUTOTEST: perf drift_stacks   fps 30.0 cpu 2.53ms gpuwait 0.01ms tris 6135 chunks 9 lights 43 vehicles 1 audio_load 16.9% audio_late 0/448 freemem 700KB
+AUTOTEST: perf drift_stacks   fps 30.0 cpu 2.22ms gpuwait 0.10ms tris 6129 chunks 9 lights 34 vehicles 1 audio_load 16.8% audio_late 0/777 freemem 700KB list 94KB peak 159KB
 AUTOTEST: screenshot hush_shot_03_drift_low.bmp saved at t=14.2
-AUTOTEST: perf drift_low      fps 30.0 cpu 6.34ms gpuwait 0.01ms tris 3143 chunks 5 lights 18 vehicles 0 audio_load 16.9% audio_late 0/621 freemem 700KB
+AUTOTEST: perf drift_low      fps 29.9 cpu 2.14ms gpuwait 0.01ms tris 3139 chunks 5 lights 18 vehicles 0 audio_load 16.8% audio_late 0/949 freemem 700KB list 86KB peak 159KB
 AUTOTEST: street level at (68, 5, 76), crowd 200
 AUTOTEST: screenshot hush_shot_04_street_chase.bmp saved at t=17.3
-AUTOTEST: perf street         fps 30.0 cpu 6.46ms gpuwait 0.57ms tris 17593 chunks 22 lights 165 vehicles 6 audio_load 17.3% audio_late 0/753 freemem 700KB
-AUTOTEST: screenshot hush_shot_05_street_cockpit.bmp saved at t=19.3
-AUTOTEST: screenshot hush_shot_06_street_cinematic.bmp saved at t=22.3
+AUTOTEST: perf street         fps 30.0 cpu 4.06ms gpuwait 0.68ms tris 12075 chunks 15 lights 59 vehicles 5 audio_load 22.3% audio_late 0/1082 freemem 700KB list 206KB peak 207KB
+AUTOTEST: screenshot hush_shot_05_street_cockpit.bmp saved at t=19.4
+AUTOTEST: screenshot hush_shot_06_street_cinematic.bmp saved at t=22.4
 AUTOTEST: screenshot hush_shot_07_street_watchers.bmp saved at t=26.4
-AUTOTEST: street reaction watchers 27 fleeing 0 crowd_murmur 1.00
+AUTOTEST: street reaction watchers 20 fleeing 0 crowd_murmur 1.00
 AUTOTEST: signal hunt from 45 m, signal 16 kind 0, found mask 0x00000000
 AUTOTEST: screenshot hush_shot_08_signal_trace.bmp saved at t=28.5
 AUTOTEST: trace strength 0.31 bearing -3.14 dist 45
@@ -134,40 +137,40 @@ AUTOTEST: screenshot hush_shot_09_signal_captured.bmp saved at t=30.2
 AUTOTEST: signal captured in 1.6s, found mask 0x00010000, 1/8 here
 AUTOTEST: screenshot hush_shot_10_console_mix.bmp saved at t=35.2
 AUTOTEST: percussion volume now 0.78
-AUTOTEST: screenshot hush_shot_11_console_shape.bmp saved at t=36.2
-AUTOTEST: screenshot hush_shot_12_console_seeds.bmp saved at t=37.2
-AUTOTEST: screenshot hush_shot_13_cockpit.bmp saved at t=40.2
-AUTOTEST: perf cockpit        fps 30.0 cpu 4.80ms gpuwait 0.01ms tris 10656 chunks 14 lights 99 vehicles 2 audio_load 25.1% audio_late 0/1741 freemem 700KB
+AUTOTEST: screenshot hush_shot_11_console_shape.bmp saved at t=36.3
+AUTOTEST: screenshot hush_shot_12_console_seeds.bmp saved at t=37.3
+AUTOTEST: screenshot hush_shot_13_cockpit.bmp saved at t=40.3
+AUTOTEST: perf cockpit        fps 22.3 cpu 3.94ms gpuwait 0.01ms tris 7792 chunks 9 lights 29 vehicles 1 audio_load 30.7% audio_late 0/2246 freemem 700KB list 203KB peak 224KB
 AUTOTEST: screenshot hush_shot_14_cinematic.bmp saved at t=43.3
 AUTOTEST: patrol mission 6 started (autopilot)
-AUTOTEST: screenshot hush_shot_15_patrol_m6.bmp saved at t=47.3
-AUTOTEST: perf patrol         fps 30.0 cpu 4.83ms gpuwait 0.97ms tris 21381 chunks 24 lights 346 vehicles 5 audio_load 31.0% audio_late 0/2047 freemem 700KB
+AUTOTEST: screenshot hush_shot_15_patrol_m6.bmp saved at t=47.4
+AUTOTEST: perf patrol         fps 30.1 cpu 3.62ms gpuwait 0.43ms tris 13973 chunks 15 lights 105 vehicles 3 audio_load 26.2% audio_late 0/2551 freemem 700KB list 170KB peak 224KB
 AUTOTEST: screenshot hush_shot_16_patrol_m6.bmp saved at t=47.4
-AUTOTEST: perf patrol         fps 28.7 cpu 11.88ms gpuwait 0.01ms tris 21373 chunks 24 lights 348 vehicles 5 audio_load 30.9% audio_late 0/2050 freemem 700KB
+AUTOTEST: perf patrol         fps 30.1 cpu 3.63ms gpuwait 0.60ms tris 14953 chunks 16 lights 104 vehicles 3 audio_load 26.2% audio_late 0/2554 freemem 700KB list 170KB peak 224KB
 AUTOTEST: screenshot hush_shot_17_patrol_m6.bmp saved at t=47.5
-AUTOTEST: perf patrol         fps 28.7 cpu 11.88ms gpuwait 0.01ms tris 21373 chunks 24 lights 351 vehicles 5 audio_load 30.8% audio_late 0/2053 freemem 700KB
+AUTOTEST: perf patrol         fps 30.1 cpu 3.63ms gpuwait 0.59ms tris 14956 chunks 16 lights 104 vehicles 3 audio_load 26.2% audio_late 0/2557 freemem 700KB list 171KB peak 224KB
 HUSH: PROGRESS SAVED
 AUTOTEST: mission 6 COMPLETE in 46.7s hull 100
-AUTOTEST: screenshot hush_shot_18_debrief.bmp saved at t=58.0
-AUTOTEST: screenshot hush_shot_19_operator_log.bmp saved at t=62.0
+AUTOTEST: screenshot hush_shot_18_debrief.bmp saved at t=58.1
+AUTOTEST: screenshot hush_shot_19_operator_log.bmp saved at t=62.1
 AUTOTEST: save reload OK (SAVE LOADED) missions 0x020->0x020 districts 0x3 signals 0x00010000->0x00010000
-HUSH: district THE WORKS generated in 50.9 ms, mesh 49860 verts built in 29.7 ms (boxes 426, lights 135)
+HUSH: district THE WORKS generated in 51.8 ms, mesh 49860 verts built in 30.0 ms (boxes 426, lights 135)
 AUTOTEST: screenshot hush_shot_20_drift_works.bmp saved at t=67.2
-AUTOTEST: perf drift_works    fps 30.0 cpu 2.32ms gpuwait 0.60ms tris 6992 chunks 21 lights 55 vehicles 0 audio_load 25.2% audio_late 0/2901 freemem 700KB
-HUSH: district THE UNDERTOW generated in 1.7 ms, mesh 31734 verts built in 24.6 ms (boxes 504, lights 171)
+AUTOTEST: perf drift_works    fps 30.0 cpu 8.41ms gpuwait 0.01ms tris 4952 chunks 13 lights 28 vehicles 0 audio_load 27.0% audio_late 0/3585 freemem 700KB list 124KB peak 256KB
+HUSH: district THE UNDERTOW generated in 1.7 ms, mesh 31734 verts built in 32.2 ms (boxes 504, lights 171)
 AUTOTEST: screenshot hush_shot_21_drift_undertow.bmp saved at t=72.2
-AUTOTEST: perf drift_undertow fps 30.1 cpu 8.50ms gpuwait 0.01ms tris 367 chunks 2 lights 9 vehicles 0 audio_load 26.2% audio_late 0/3117 freemem 700KB
-HUSH: district CIVIC CENTRE generated in 34.2 ms, mesh 106758 verts built in 72.8 ms (boxes 1042, lights 731)
+AUTOTEST: perf drift_undertow fps 30.0 cpu 1.80ms gpuwait 0.01ms tris 371 chunks 2 lights 9 vehicles 0 audio_load 30.1% audio_late 0/3979 freemem 700KB list 41KB peak 256KB
+HUSH: district CIVIC CENTRE generated in 29.6 ms, mesh 106758 verts built in 78.3 ms (boxes 1042, lights 731)
 AUTOTEST: screenshot hush_shot_22_drift_civic_twilight.bmp saved at t=78.2
-AUTOTEST: perf drift_civic    fps 30.0 cpu 10.05ms gpuwait 0.01ms tris 10180 chunks 16 lights 87 vehicles 2 audio_load 27.4% audio_late 0/3380 freemem 700KB
+AUTOTEST: perf drift_civic    fps 29.8 cpu 3.00ms gpuwait 0.07ms tris 10167 chunks 16 lights 81 vehicles 2 audio_load 28.3% audio_late 0/4419 freemem 700KB list 121KB peak 256KB
 AUTOTEST: screenshot hush_shot_23_console_standalone.bmp saved at t=81.2
-AUTOTEST: screenshot hush_shot_24_briefing.bmp saved at t=85.2
+AUTOTEST: screenshot hush_shot_24_briefing.bmp saved at t=85.3
 AUTOTEST: screenshot hush_shot_25_prologue.bmp saved at t=87.8
 AUTOTEST: screenshot hush_shot_26_prologue_card4.bmp saved at t=90.3
 HUSH: PROGRESS SAVED
-AUTOTEST: screenshot hush_shot_27_casefile.bmp saved at t=92.3
-AUTOTEST: screenshot hush_shot_28_casefile_intercepts.bmp saved at t=93.3
+AUTOTEST: screenshot hush_shot_27_casefile.bmp saved at t=92.4
+AUTOTEST: screenshot hush_shot_28_casefile_intercepts.bmp saved at t=93.4
 AUTOTEST: story_flags=1
-AUTOTEST: done, 2775 frames, audio blocks 4032 late 0
+AUTOTEST: done, 2558 frames, audio blocks 5238 late 0
 HUSH: clean exit
 Pipelines created: 0

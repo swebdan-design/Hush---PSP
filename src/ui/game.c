@@ -2,6 +2,7 @@
 #include "app.h"
 #include "../render/render_moth.h"
 #include "../render/render_crowd.h"
+#include "../platform/psp/diag.h"
 #include <pspgu.h>
 #include <string.h>
 
@@ -92,6 +93,7 @@ static void city_reacts(App *a, const MissionInput *mi, float dt) {
         }
     }
     /* signal hunting: the scanner's ping guides you; hold scan close by to capture */
+    diag_mark("u hunt");
     hunt_update(&a->hunt, &a->world, c, a->prog.signals_found, mi->scan_held, dt);
     if (a->hunt.ping && a->scan_t <= 0) sfx_play(&a->sfx, SFX_PING);
     if (a->hunt.found >= 0) {
@@ -155,6 +157,13 @@ void game_update(float dt, int controls) {
     }
 
     float dmg = craft_update(&a->craft, &a->world, &fi, dt);
+    if (!(isfinite(a->craft.pos.x) && isfinite(a->craft.pos.y) && isfinite(a->craft.pos.z) && isfinite(a->craft.vel.x) && isfinite(a->craft.vel.y) && isfinite(a->craft.vel.z))) {
+        /* never let a bad number lose the player: put the Moth back at the district spawn */
+        diag_log("craft state not finite - reset to spawn");
+        craft_init(&a->craft, a->world.spawn, a->world.spawn_yaw);
+        camera_init(&a->cam, &a->craft);
+    }
+    diag_mark("u flight");
     if (dmg > 1.0f) { sfx_play(&a->sfx, SFX_IMPACT); a->cam.shake = h_maxf(a->cam.shake, h_clampf(dmg / 20.0f, 0.2f, 1.0f)); }
     /* steam vents scald the hull while they fire */
     g_vent_warn = h_maxf(0.0f, g_vent_warn - dt);
@@ -169,12 +178,16 @@ void game_update(float dt, int controls) {
         }
     }
     if (a->mode != MODE_PATROL && a->craft.hull < a->craft.hull_max) a->craft.hull = h_minf(a->craft.hull_max, a->craft.hull + 4.0f * dt); /* drift: self-repair */
+    diag_mark("u traffic");
     traffic_update(&a->traffic, &a->world, dt, a->craft.pos);
+    diag_mark("u crowd");
     crowd_update(&a->crowd, &a->world, a->craft.pos, a->wx.rain, dt);
     weather_update(&a->wx, dt);
+    diag_mark("u city");
     if (a->mode != MODE_ATTRACT) city_reacts(a, &mi, dt);
     else { a->traffic.horns = 0; a->sfx.crowd = 0; }
 
+    diag_mark("u mission");
     if (a->mode == MODE_PATROL) {
         mission_update(&a->mission, &a->world, &a->traffic, &a->craft, &mi, dt);
         handle_mission_events(a);
@@ -220,8 +233,10 @@ void game_update(float dt, int controls) {
 
     float pursuit = a->mode == MODE_PATROL ? a->mission.pursuit : 0.0f;
     float signal = a->mode == MODE_PATROL ? a->mission.signal : a->bridge.landmark_prox;
+    diag_mark("u music env");
     env_bridge_update(&a->bridge, &a->env, &a->world, &a->craft, &a->traffic, &a->wx, pursuit, mi.scan_held ? 1.0f : 0.0f, signal);
     hush_music_set_env(a->music, &a->env);
+    diag_mark("u camera");
     camera_update(&a->cam, &a->craft, &a->world, dt);
 
     /* engine and wind sounds */
@@ -302,24 +317,33 @@ static void draw_scan_beam(App *a) {
 
 void game_render(int with_hud) {
     App *a = &g_app;
+    diag_mark("r sky");
     rw_atmos(&a->world, &a->wx, &a->atmos);
     Camera *cam = &a->cam;
     rw_draw_sky(&a->world, &a->atmos, cam->eye, cam->target, cam->up, cam->fov);
     gfx_set_camera(cam->eye, cam->target, cam->up, cam->fov, 1.5f, a->atmos.fog_far + 80.0f);
     rw_set_focus(a->craft.pos, a->scanning, a->brown_p, a->mode == MODE_ATTRACT ? 0.0f : h_clampf(a->brown_t, 0.0f, 1.0f), 1.0f / 30.0f);
+    diag_mark("r world");
     rw_draw_world(&a->world, &a->atmos, a->time);
+    diag_mark("r traffic");
     rw_draw_traffic(&a->world, &a->traffic, &a->atmos, a->time);
+    diag_mark("r crowd");
     rw_draw_crowd(&a->crowd, &a->atmos, a->time);
+    diag_mark("r moth");
     moth_draw(&a->craft, a->time, a->prog.paint, cam->mode != CAM_COCKPIT, a->atmos.fog_near, a->atmos.fog_far, a->atmos.fog_color);
+    diag_mark("r lights");
     rw_draw_world_lights(&a->world, &a->atmos, a->time, a->wx.rain);
     draw_marker_3d(a);
     draw_signal_shimmer(a);
+    diag_mark("r flush lights");
     rw_flush_lights(&a->world, &a->atmos);
+    diag_mark("r effects");
     rw_draw_effects(&a->world, &a->wx, &a->atmos, a->time, 1.0f / 30.0f, a->prog.rain_density);
     draw_scan_beam(a);
     gfx_mode_2d();
     if (a->emp_flash > 0) gfx_rect(0, 0, SCR_W, SCR_H, RGBA(150, 220, 255, (int)(90 * a->emp_flash)));
     if (a->craft.hull < a->craft.hull_max * 0.25f && a->mode == MODE_PATROL)
         gfx_rect(0, 0, SCR_W, SCR_H, RGBA(120, 10, 10, (int)(30 + 20 * sinf(a->time * 6.0f))));
+    diag_mark("r hud");
     if (with_hud) hud_draw();
 }

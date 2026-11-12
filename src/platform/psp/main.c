@@ -13,6 +13,10 @@
 #include "../../render/render_moth.h"
 #include "audio_out.h"
 #include "save_io.h"
+#include "diag.h"
+#include <pspfpu.h>
+
+#define HUSH_BUILD "build 2026-11-12 diag"
 
 PSP_MODULE_INFO("HUSH", 0, 1, 0);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
@@ -33,6 +37,7 @@ static int cb_thread(SceSize a, void *b) {
 /* ---------------- app functions ---------------- */
 
 void app_set_state(AppState s) {
+    if (s != g_app.state) { diag_log("state %d -> %d (mode %d, district %d)", (int)g_app.state, (int)s, g_app.mode, g_app.world_district); if (s == ST_PLAY || s == ST_PROLOGUE) diag_arm(16, "gameplay starts"); }
     g_app.state = s;
     g_app.state_t = 0;
 }
@@ -78,11 +83,15 @@ void app_load_district(int d) {
     if (a->world_district == d) return;
     char buf[48];
     snprintf(buf, sizeof(buf), "APPROACHING %s", world_district_name(d));
+    diag_arm(16, "district load");
+    diag_log("load district %d (was %d), free %d KB", d, a->world_district, (int)(sceKernelTotalFreeMemSize() / 1024));
     loading_screen(buf);
     uint64_t t0 = gfx_ticks_us();
     world_generate(&a->world, d);
     uint64_t t1 = gfx_ticks_us();
+    diag_log("generated: boxes %d lights %d ads %d neon %d signals %d peds-blocks %d in %.0f ms", a->world.n_boxes, a->world.n_lights, a->world.n_ads, a->world.n_neon, a->world.n_signals, a->world.n_blocks, (float)(t1 - t0) / 1000.0f);
     rw_build(&a->world);
+    diag_log("mesh built: %d verts in %.0f ms", rw_stats()->verts_total, rw_stats()->build_ms);
     a->world_district = d;
     printf("HUSH: district %s generated in %.1f ms, mesh %d verts built in %.1f ms (boxes %d, lights %d)\n",
            a->world.name, (float)(t1 - t0) / 1000.0f, rw_stats()->verts_total, rw_stats()->build_ms, a->world.n_boxes, a->world.n_lights);
@@ -161,9 +170,9 @@ static void shot(const char *name) {
 }
 static void perf(const char *tag) {
     const RenderStats *rs = rw_stats();
-    printf("AUTOTEST: perf %-14s fps %.1f cpu %.2fms gpuwait %.2fms tris %d chunks %d lights %d vehicles %d audio_load %.1f%% audio_late %u/%u freemem %dKB\n",
+    printf("AUTOTEST: perf %-14s fps %.1f cpu %.2fms gpuwait %.2fms tris %d chunks %d lights %d vehicles %d audio_load %.1f%% audio_late %u/%u freemem %dKB list %dKB peak %dKB\n",
            tag, g_app.fps, gfx_last_cpu_ms, gfx_last_gpu_wait_ms, rs->tris_drawn, rs->chunks_drawn, rs->lights_drawn, rs->vehicles_drawn,
-           audio_out_load() * 100.0f, audio_out_underruns(), audio_out_blocks(), (int)(sceKernelTotalFreeMemSize() / 1024));
+           audio_out_load() * 100.0f, audio_out_underruns(), audio_out_blocks(), (int)(sceKernelTotalFreeMemSize() / 1024), gfx_list_last / 1024, gfx_list_peak / 1024);
 }
 static int g_step __attribute__((unused));
 static int g_horns __attribute__((unused));
@@ -178,8 +187,8 @@ static void autotest_tick(float dt) {
     if (a->state == ST_DEBRIEF || a->state == ST_FAILED || g_step_t > 400.0f) {
         int ok = a->state == ST_DEBRIEF;
         g_cm_ok += ok;
-        printf("AUTOTEST: mission %2d %-20s %s sim %.0fs hull %.0f fps %.1f tris %d\n", g_cm + 1, hush_missions[g_cm].title,
-               ok ? "COMPLETE" : (a->state == ST_FAILED ? a->mission.fail_reason : "TIMEOUT"), a->mission.total_time, a->craft.hull, a->fps, rw_stats()->tris_drawn);
+        printf("AUTOTEST: mission %2d %-20s %s sim %.0fs hull %.0f fps %.1f tris %d list peak %dKB\n", g_cm + 1, hush_missions[g_cm].title,
+               ok ? "COMPLETE" : (a->state == ST_FAILED ? a->mission.fail_reason : "TIMEOUT"), a->mission.total_time, a->craft.hull, a->fps, rw_stats()->tris_drawn, gfx_list_peak / 1024);
         if (g_cm == 3 || g_cm == 8) shot("campaign");
         g_cm++;
         if (g_cm >= MISSION_COUNT) { printf("AUTOTEST: campaign %d/12 complete, missions_done=0x%03x districts=0x%x landmarks=0x%x\n", g_cm_ok, a->prog.missions_done, a->prog.districts, a->prog.landmarks); a->quit = 1; return; }
@@ -282,6 +291,10 @@ static void autotest_tick(float dt) {
 
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
+    uint32_t fcr_boot = pspFpuGetFCR31();
+    /* the PSP FPU traps invalid/divide/overflow by default; PPSSPP does not. Never let a stray NaN halt the console. */
+    pspFpuSetEnable(0);
+    pspFpuSetFS(1);
     int th = sceKernelCreateThread("hush_cb", cb_thread, 0x11, 0xFA0, 0, 0);
     if (th >= 0) sceKernelStartThread(th, 0, 0);
     scePowerSetClockFrequency(333, 333, 166);
@@ -293,6 +306,8 @@ int main(int argc, char **argv) {
 #ifdef HUSH_AUTOTEST
     a->autotest = HUSH_AUTOTEST;
 #endif
+    diag_init();
+    diag_log("HUSH %s boot: fcr31 %08x -> %08x, free %d KB (largest %d KB)", HUSH_BUILD, (unsigned)fcr_boot, (unsigned)pspFpuGetFCR31(), (int)(sceKernelTotalFreeMemSize() / 1024), (int)(sceKernelMaxFreeMemSize() / 1024));
     gfx_init();
     loading_screen("HUSH");
     input_init(&a->in);
@@ -301,6 +316,7 @@ int main(int argc, char **argv) {
     char msg[64];
     int loaded = save_io_load(&a->prog, msg, sizeof(msg));
     printf("HUSH: boot, save: %s\n", msg);
+    diag_log("save: %s; vram used %d KB of %d KB; story %d drift d%d w%d t%d detail %d ctl %d signals %08x", msg, gfx_vram_used() / 1024, (int)(sceGeEdramGetSize() / 1024), a->prog.story_flags, a->prog.drift_district, a->prog.drift_weather, a->prog.drift_tod, a->prog.detail, a->prog.control_scheme, (unsigned)a->prog.signals_found);
     (void)loaded;
     a->music = hush_music_instance();
 #ifdef HUSH_AUTOTEST
@@ -327,7 +343,9 @@ int main(int argc, char **argv) {
     hush_music_init(a->music, (float)HUSH_ENGINE_RATE, &a->prog.music);
     printf("HUSH: music engine ready in %.1f ms (seed %u)\n", (float)(gfx_ticks_us() - t0) / 1000.0f, a->prog.music.seed);
     sfx_init(&a->sfx, (float)HUSH_ENGINE_RATE);
-    if (!audio_out_start(a->music, &a->sfx)) printf("HUSH: audio output FAILED to start\n");
+    int aud_ok = audio_out_start(a->music, &a->sfx);
+    if (!aud_ok) printf("HUSH: audio output FAILED to start\n");
+    diag_log("music engine ready (seed %u), audio %s, free %d KB", a->prog.music.seed, aud_ok ? "started" : "FAILED", (int)(sceKernelTotalFreeMemSize() / 1024));
     app_push_music();
     app_start_attract();
     app_set_state(ST_TITLE);
@@ -352,11 +370,22 @@ int main(int argc, char **argv) {
             if (a->fast_t > 10.0f && rw_quality() < 3) { rw_set_quality(rw_quality() + 1); a->fast_t = 0; }
         }
         if (a->fps_acc >= 1.0f) { a->fps = (float)a->fps_frames / a->fps_acc; a->fps_acc = 0; a->fps_frames = 0; }
+        diag_frame();
+        {   /* once a second: the numbers that matter on real hardware */
+            static float acc;
+            acc += dt;
+            if (acc >= 1.0f) {
+                acc = 0;
+                diag_log("st %d mode %d d%d fps %.1f frame %.1f ms cpu %.1f gpu %.1f aud %.0f%% late %u/%u q%d list %dKB tris %d", (int)a->state, a->mode, a->world_district, a->fps, a->frame_avg * 1000.0f, gfx_last_cpu_ms, gfx_last_gpu_wait_ms, audio_out_load() * 100.0f, audio_out_underruns(), audio_out_blocks(), rw_quality(), gfx_list_last / 1024, rw_stats()->tris_drawn);
+            }
+        }
+        diag_mark("input");
         input_update(&a->in, dt);
 #ifdef HUSH_AUTOTEST
         autotest_tick(dt);
         input_update(&a->in, 0);   /* re-sample with the scripted state */
 #endif
+        diag_mark("update");
         AppState before = a->state;
         int world_visible = a->world_district >= 0;
         switch (a->state) {
@@ -384,14 +413,18 @@ int main(int argc, char **argv) {
         if (a->state == ST_DEBRIEF && before != ST_DEBRIEF) on_debrief_enter();
         if (play_acc >= 1.0f) { a->prog.play_seconds += (uint32_t)play_acc; play_acc -= (float)(int)play_acc; }
 
+        diag_mark("render");
         gfx_begin(RGBA(4, 6, 9, 255));
         if (world_visible && a->state != ST_CREDITS) game_render(a->state == ST_PLAY || (a->state == ST_CONSOLE && 0));
         else { gfx_mode_2d(); gfx_rect_grad(0, 0, SCR_W, SCR_H, RGBA(8, 10, 16, 255), RGBA(2, 3, 5, 255)); }
         gfx_mode_2d();
+        diag_mark("2d");
         if (a->state == ST_CONSOLE) console_render();
         else if (a->state != ST_PLAY) menus_render();
         else if (a->note_t > 0) gfx_text(FONT_SMALL, SCR_W * 0.5f, 52, a->note, RGBA(255, 186, 90, (int)(255 * h_clampf(a->note_t, 0, 1))), ALIGN_CENTER);
+        diag_mark("end");
         gfx_end(30);
+        diag_mark("frame done");
     }
     audio_out_stop();
     gfx_term();

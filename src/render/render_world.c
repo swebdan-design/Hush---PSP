@@ -8,6 +8,7 @@
  * distance; fog also hides the draw limit. */
 #include "render_world.h"
 #include "textures.h"
+#include "../platform/psp/diag.h"
 #include <pspkernel.h>
 #include <psputils.h>
 #include <string.h>
@@ -429,6 +430,7 @@ void rw_draw_world(const World *w, const Atmos *a, float time) {
     gfx_fog(1, a->fog_near, a->fog_far, a->fog_color);
     sceGuDisable(GU_CULL_FACE);
     /* streets */
+    diag_mark("rw ground");
     ground_plane(w, a, w->ground_y, &g_tex.ground, RGBA(150, 150, 160, 255), 1.0f / 32.0f, 0, 0);
     sceGuEnable(GU_CULL_FACE);
     sceGuFrontFace(GU_CCW);
@@ -453,6 +455,7 @@ void rw_draw_world(const World *w, const Atmos *a, float time) {
             if (dx * dx + dy * dy + dz * dz < 55.0f * 55.0f) near_r[n_near++] = (short)i;
         }
     }
+    diag_mark("rw chunks");
     g_stats.clipped = 0;
     for (int t = 0; t < TEX_COUNT; t++) {
         gfx_bind(&g_tex.facade[t], 1, 1);
@@ -483,6 +486,7 @@ void rw_draw_world(const World *w, const Atmos *a, float time) {
         uint32_t wc = col_lerp(RGBA(70, 110, 120, 210), a->fog_color, 0.35f);
         ground_plane(w, a, w->water_y, &g_tex.water, wc, 1.0f / 48.0f, time * 0.01f, time * 0.004f);
     }
+    diag_mark("rw signs");
     /* billboards and neon signs: emissive, fogged a little less than buildings, two texture passes */
     if (w->n_ads) {
         gfx_fog(1, a->fog_near * 1.6f, a->fog_far * 1.35f, a->fog_color);
@@ -526,7 +530,9 @@ void rw_draw_world(const World *w, const Atmos *a, float time) {
             clip_flush();
         }
     }
+    diag_mark("rw neon");
     draw_neon(w, a, time);
+    diag_mark("rw lanes");
     draw_lane_marks(w, a);
 }
 

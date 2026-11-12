@@ -6,7 +6,7 @@ SRC := $(wildcard src/audio/*.c) $(wildcard src/game/*.c) $(wildcard src/render/
 OBJS := $(patsubst src/%.c,$(BUILD)/obj/%.o,$(SRC))
 
 CFLAGS = -O2 -G0 -Wall -Wno-unused-function -Wno-format -fsingle-precision-constant -ffast-math -std=gnu11 -DHUSH_PSP $(EXTRA_DEFS) -MMD -MP
-LIBS = -lpspgum -lpspgu -lpsppower -lpsprtc -lpspaudio -lm
+LIBS = -lpspfpu -lpspgum -lpspgu -lpsppower -lpsprtc -lpspaudio -lm
 EXTRA_TARGETS = $(BUILD)/EBOOT.PBP
 PSP_EBOOT_TITLE = HUSH
 PSP_EBOOT_ICON = artwork/psp/ICON0.PNG

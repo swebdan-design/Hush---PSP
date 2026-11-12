@@ -5,6 +5,7 @@
 #include <pspaudio.h>
 #include <psprtc.h>
 #include <string.h>
+#include <pspfpu.h>
 
 #define OUT_FRAMES 1024
 #define ENG_FRAMES (OUT_FRAMES / 2)
@@ -25,6 +26,9 @@ static uint64_t now_us(void) { u64 t; sceRtcGetCurrentTick(&t); return (uint64_t
 static int audio_thread(SceSize args, void *argp) {
     (void)args; (void)argp;
     int cur = 0;
+    /* each thread has its own FPU state: no exception traps, flush denormals to zero */
+    pspFpuSetEnable(0);
+    pspFpuSetFS(1);
     const float block_us = (float)OUT_FRAMES * 1e6f / (float)HUSH_OUT_RATE;
     while (g_running) {
         uint64_t t0 = now_us();

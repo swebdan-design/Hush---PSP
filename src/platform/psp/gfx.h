@@ -48,6 +48,7 @@ void gfx_begin(uint32_t clear_color);
 /* Finishes the list, waits for the GE, flips at a stable 30 Hz (or 60 when allowed). */
 void gfx_end(int target_hz);
 void *gfx_vram_alloc(int bytes);
+int gfx_vram_used(void);
 /* Copies a texture into VRAM if there is room (faster sampling); returns the Tex to use. */
 Tex gfx_tex_to_vram(Tex t);
 void gfx_bind(const Tex *t, int linear, int repeat);
@@ -98,6 +99,7 @@ void gfx_logo(float cx, float y, float alpha);
 /* timing / diagnostics */
 uint64_t gfx_ticks_us(void);
 extern int gfx_frame_count;
+extern int gfx_list_peak, gfx_list_last;   /* display-list bytes used (of 1 MB) */
 extern float gfx_last_cpu_ms, gfx_last_gpu_wait_ms;
 
 /* debug screenshot of the current display buffer to a 24-bit BMP */

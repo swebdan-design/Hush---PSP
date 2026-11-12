@@ -117,6 +117,18 @@ Reported by the player: (1) frame rate became jittery/choppy at times, (2) windo
   the audio thread's measured load exceeds 55 %; Options › Detail (Auto/High/Medium/Low); the performance overlay now shows
   real frame ms, clipped triangles, audio load and detail level. **These need re-testing on the PSP-3000.**
 
+## 5c. Second hardware report (PSP-3000): crash entering the prologue and Drift, audio dropouts on the menu
+- Finding: the PSP FPU starts with invalid/divide-by-zero/overflow **traps enabled** (FCR31 `0x00000E00`, read at boot
+  and logged). PPSSPP reports this value but never raises the exceptions, so a NaN or division by zero that is harmless
+  in the emulator powers the console off. Fix: traps disabled and flush-to-zero enabled on the main and audio threads
+  (FCR31 `0x01000000`); the audio determinism hash is unchanged (`713db168`).
+- Not reproduced off-device: the whole PSP game was also built for x86 against stub SDK headers with the same traps
+  enabled (plus slow-frame timing, display-list overflow, vertex and texture checks) and ran the full scripted tour clean;
+  display-list peak is 427 KB of 1 MB; stack frames are < 3 KB.
+- `hush_log.txt` now records the first stage at which an FPU flag is raised on hardware, a non-finite craft state is
+  reset to spawn, and per-second audio load / late blocks are logged for the menu dropout report.
+  **Awaiting the next hardware run.**
+
 ## 6. Known issues and limitations
 - Not tested on PSP hardware; the GE's handling of large near-plane triangles is mitigated by facade tessellation but unverified on device.
 - PPSSPP software renderer only; hardware-accelerated backends were not exercised.

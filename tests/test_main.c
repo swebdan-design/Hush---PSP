@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+#include <fenv.h>
 /* HUSH host test suite: deterministic audio, mixing limits, world validity,
  * flight, persistence, and an autopilot that plays every Patrol mission. */
 #include "../src/audio/music.h"
@@ -568,6 +570,10 @@ static void test_env_bridge(void) {
 
 int main(int argc, char **argv) {
     int quick = argc > 1 && !strcmp(argv[1], "--quick");
+#ifdef HUSH_FPE
+    /* the PSP's FPU traps these by default: model it so a division by zero fails here, not on the console */
+    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
     test_saves();
     test_world();
     test_flight();
