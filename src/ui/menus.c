@@ -26,37 +26,42 @@ void ui_header(const char *title, const char *sub) {
     if (sub) gfx_text(FONT_SMALL, SCR_W - 14, 11, sub, C_DIM, ALIGN_RIGHT);
 }
 
-/* PSP face-button glyphs drawn with primitives */
-static float glyph(float x, float y, char b) {
-    float cx = x + 5, cy = y + 6;
+/* PSP button glyphs drawn with primitives. Each glyph occupies a 12 x 14 cell
+ * aligned with FONT_SMALL text drawn at the same y. Returns the advance. */
+float ui_glyph(float x, float y, char b, float alpha) {
+    float cx = x + 5.5f, cy = y + 7.0f;
     switch (b) {
-    case 'X': gfx_line(cx - 3, cy - 3, cx + 3, cy + 3, RGBA(140, 180, 255, 255)); gfx_line(cx - 3, cy + 3, cx + 3, cy - 3, RGBA(140, 180, 255, 255)); break;
-    case 'O': { float p[16]; for (int i = 0; i < 8; i++) { float a = (float)i * H_TAU / 8; p[2 * i] = cx + cosf(a) * 3.5f; p[2 * i + 1] = cy + sinf(a) * 3.5f; } gfx_lines(p, 8, RGBA(255, 120, 130, 255), 1); break; }
-    case 'S': gfx_rect_outline(cx - 3, cy - 3, 6, 6, RGBA(255, 150, 220, 255)); break;
-    case 'T': { float p[6] = { cx, cy - 4, cx + 4, cy + 3, cx - 4, cy + 3 }; gfx_lines(p, 3, RGBA(120, 230, 180, 255), 1); break; }
-    case 'L': gfx_text(FONT_SMALL, x, y, "L", C_TXT, ALIGN_LEFT); return 8;
-    case 'R': gfx_text(FONT_SMALL, x, y, "R", C_TXT, ALIGN_LEFT); return 8;
+    case 'X': { uint32_t c = col_alpha(RGBA(140, 180, 255, 255), alpha); gfx_line(cx - 3, cy - 3, cx + 3, cy + 3, c); gfx_line(cx - 3, cy + 3, cx + 3, cy - 3, c); break; }
+    case 'O': { float p[16]; for (int i = 0; i < 8; i++) { float a = (float)i * H_TAU / 8; p[2 * i] = cx + cosf(a) * 3.6f; p[2 * i + 1] = cy + sinf(a) * 3.6f; } gfx_lines(p, 8, col_alpha(RGBA(255, 120, 130, 255), alpha), 1); break; }
+    case 'S': gfx_rect_outline(cx - 3, cy - 3, 6, 6, col_alpha(RGBA(255, 150, 220, 255), alpha)); break;
+    case 'T': { float p[6] = { cx, cy - 4, cx + 4, cy + 3, cx - 4, cy + 3 }; gfx_lines(p, 3, col_alpha(RGBA(120, 230, 180, 255), alpha), 1); break; }
+    case 'u': gfx_tri(cx, cy - 4, cx + 4, cy + 2, cx - 4, cy + 2, col_alpha(C_TXT, alpha)); break;
+    case 'd': gfx_tri(cx - 4, cy - 2, cx + 4, cy - 2, cx, cy + 4, col_alpha(C_TXT, alpha)); break;
+    case 'L': case 'R': { char t[2] = { b, 0 }; return gfx_text(FONT_SMALL, x, y, t, col_alpha(C_TXT, alpha), ALIGN_LEFT) + 2; }
     default: break;
     }
     return 12;
 }
 
-/* hints like "X:SELECT O:BACK" -> glyphs + labels */
+static float glyph_width(char b) { if (b == 'L' || b == 'R') { char t[2] = { b, 0 }; return gfx_text_width(FONT_SMALL, t) + 2; } return 12; }
+
+/* hints like "X:SELECT O:BACK", laid out right-aligned with exact widths */
 void ui_footer(const char *hints) {
-    gfx_rect(0, SCR_H - 18, SCR_W, 18, RGBA(4, 6, 9, 220));
-    float x = SCR_W - 10;
-    /* layout right-to-left: measure first */
-    char buf[128];
+    const float y = SCR_H - 16;
+    gfx_rect(0, SCR_H - 19, SCR_W, 19, RGBA(4, 6, 9, 225));
+    gfx_line(0, SCR_H - 19, SCR_W, SCR_H - 19, RGBA(90, 110, 125, 90));
+    char buf[128], tmp[128];
     snprintf(buf, sizeof(buf), "%s", hints);
+    snprintf(tmp, sizeof(tmp), "%s", hints);
     float total = 0;
     char *save = NULL;
-    char tmp[128]; snprintf(tmp, sizeof(tmp), "%s", hints);
-    for (char *tok = strtok_r(tmp, " ", &save); tok; tok = strtok_r(NULL, " ", &save)) total += 14 + gfx_text_width(FONT_SMALL, tok + 2) + 12;
-    x = SCR_W - 10 - total;
+    for (char *tok = strtok_r(tmp, " ", &save); tok; tok = strtok_r(NULL, " ", &save))
+        total += glyph_width(tok[0]) + 3 + gfx_text_width(FONT_SMALL, tok + 2) + 14;
+    float x = SCR_W - 12 - (total - 14);
     save = NULL;
     for (char *tok = strtok_r(buf, " ", &save); tok; tok = strtok_r(NULL, " ", &save)) {
-        x += glyph(x, SCR_H - 15, tok[0]) + 2;
-        x += gfx_text(FONT_SMALL, x, SCR_H - 15, tok + 2, C_DIM, ALIGN_LEFT) + 12;
+        x += ui_glyph(x, y, tok[0], 1.0f) + 3;
+        x += gfx_text(FONT_SMALL, x, y, tok + 2, C_DIM, ALIGN_LEFT) + 14;
     }
 }
 
@@ -114,13 +119,20 @@ static void title_update(void) {
 static void title_render(void) {
     App *a = &g_app;
     float t = a->state_t;
-    gfx_rect_grad(0, 0, SCR_W, SCR_H, RGBA(0, 0, 0, 120), RGBA(0, 0, 0, 200));
+    gfx_rect_grad(0, 0, SCR_W, SCR_H, RGBA(0, 0, 0, 110), RGBA(0, 0, 0, 205));
     float al = h_clampf(t / 2.0f, 0, 1);
-    gfx_logo(SCR_W * 0.5f, 74, al);
-    gfx_text(FONT_SMALL, SCR_W * 0.5f, 172, "A GENERATIVE CYBERPUNK FLIGHT EXPERIENCE", col_alpha(C_DIM, al), ALIGN_CENTER);
-    float blink = 0.4f + 0.6f * (0.5f + 0.5f * sinf(t * 2.5f));
-    if (t > 1.5f) gfx_text(FONT_SMALL, SCR_W * 0.5f, 214, "PRESS CROSS", col_alpha(C_TXT, blink * h_clampf(t - 1.5f, 0, 1)), ALIGN_CENTER);
-    gfx_text(FONT_SMALL, SCR_W * 0.5f, SCR_H - 16, "VESPER  2146", col_alpha(RGBA(110, 120, 130, 200), al), ALIGN_CENTER);
+    /* everything on the centre line: logo block, tagline, prompt, footer line */
+    gfx_logo(SCR_W * 0.5f, 62, al);
+    gfx_text(FONT_SMALL, SCR_W * 0.5f, 158, "A GENERATIVE CYBERPUNK FLIGHT EXPERIENCE", col_alpha(C_DIM, al), ALIGN_CENTER);
+    if (t > 1.5f) {
+        float blink = (0.45f + 0.55f * (0.5f + 0.5f * sinf(t * 2.5f))) * h_clampf(t - 1.5f, 0, 1);
+        const char *msg = "PRESS";
+        float w = gfx_text_width(FONT_SMALL, msg) + 4 + 12;
+        float x = SCR_W * 0.5f - w * 0.5f;
+        x += gfx_text(FONT_SMALL, x, 204, msg, col_alpha(C_TXT, blink), ALIGN_LEFT) + 4;
+        ui_glyph(x, 204, 'X', blink);
+    }
+    gfx_text(FONT_SMALL, SCR_W * 0.5f, SCR_H - 22, "VESPER  2146", col_alpha(RGBA(110, 120, 130, 200), al), ALIGN_CENTER);
 }
 
 static void main_update(void) {
@@ -140,22 +152,32 @@ static void main_update(void) {
 
 static void main_render(void) {
     App *a = &g_app;
-    gfx_rect_grad(0, 0, SCR_W, SCR_H, RGBA(0, 0, 0, 70), RGBA(0, 0, 0, 170));
-    gfx_logo(120, 34, 0.9f);
+    /* layout grid: logo centred at the top; menu column at x 56; info column at x 262 */
+    const float list_x = 64, list_y = 108, row = 22;
+    gfx_rect_grad(0, 0, SCR_W, SCR_H, RGBA(0, 0, 0, 80), RGBA(0, 0, 0, 185));
+    gfx_logo(SCR_W * 0.5f, 10, 0.95f);
+    gfx_line(40, 98, SCR_W - 40, 98, RGBA(120, 140, 160, 60));
     for (int i = 0; i < 6; i++) {
-        float y = 132 + (float)i * 17;
+        float y = list_y + (float)i * row;
         int sel = a->menu_sel == i;
-        if (sel) gfx_rect(40, y - 3, 190, 16, RGBA(255, 186, 90, 30));
-        gfx_text(FONT_LARGE, 52, y - 2, main_items[i], sel ? C_SEL : C_TXT, ALIGN_LEFT);
+        if (sel) {
+            gfx_rect(list_x - 12, y, 190, row - 2, RGBA(255, 186, 90, 30));
+            gfx_rect(list_x - 12, y, 3, row - 2, C_SEL);
+        }
+        gfx_text(FONT_LARGE, list_x, y - 1, main_items[i], sel ? C_SEL : C_TXT, ALIGN_LEFT);
     }
-    ui_panel(262, 146, 200, 60, 1.0f);
-    gfx_text_wrap(FONT_SMALL, 272, 154, 182, main_desc[a->menu_sel], C_TXT, 4, -1);
+    const float px = 262, pw = 194;
+    ui_panel(px, list_y, pw, 62, 1.0f);
+    gfx_text_wrap(FONT_SMALL, px + 10, list_y + 8, pw - 20, main_desc[a->menu_sel], C_TXT, 3, -1);
     char buf[64];
     int done = 0;
     for (int i = 0; i < MISSION_COUNT; i++) if (a->prog.missions_done & (1u << i)) done++;
-    snprintf(buf, sizeof(buf), "MISSIONS %d/12   LANDMARKS %d/5", done, __builtin_popcount(a->prog.landmarks));
-    gfx_text(FONT_SMALL, 272, 214, buf, C_DIM, ALIGN_LEFT);
-    if (a->note_t > 0) gfx_text(FONT_SMALL, 272, 226, a->note, C_ACC, ALIGN_LEFT);
+    ui_panel(px, list_y + 70, pw, 46, 1.0f);
+    snprintf(buf, sizeof(buf), "ASSIGNMENTS  %2d / 12", done);
+    gfx_text(FONT_SMALL, px + 10, list_y + 78, buf, C_DIM, ALIGN_LEFT);
+    snprintf(buf, sizeof(buf), "LANDMARKS    %2d / 5", __builtin_popcount(a->prog.landmarks));
+    gfx_text(FONT_SMALL, px + 10, list_y + 94, buf, C_DIM, ALIGN_LEFT);
+    if (a->note_t > 0) gfx_text(FONT_SMALL, px + pw * 0.5f, list_y + 124, a->note, C_ACC, ALIGN_CENTER);
     ui_footer("X:SELECT O:BACK");
 }
 
@@ -219,7 +241,8 @@ static void briefing_render(void) {
     int chars = (int)(a->state_t * 90.0f);
     for (int i = 0; i < 5 && md->briefing[i]; i++) {
         int n = (int)strlen(md->briefing[i]);
-        y += 13.0f * (float)gfx_text_wrap(FONT_SMALL, 36, y, 408, md->briefing[i], C_TXT, 3, chars);
+        char bl[200];
+        y += 13.0f * (float)gfx_text_wrap(FONT_SMALL, 36, y, 408, ctl_subst(md->briefing[i], bl, sizeof(bl)), C_TXT, 3, chars);
         chars -= n;
         if (chars <= 0) break;
         y += 3;
@@ -397,7 +420,8 @@ static void drift_render(void) {
     menu_item(120, 128, "MUSIC PRESET", hush_preset_names[p->drift_preset], a->menu_sel == 3, 1);
     menu_item(120, 146, "COMPOSITION SEED", seed, a->menu_sel == 4, 1);
     menu_item(120, 174, "BEGIN DRIFT", NULL, a->menu_sel == 5, 1);
-    gfx_text_wrap(FONT_SMALL, 110, 222, 270, "All four districts are open in Drift. Hold TRIANGLE near a sonic landmark to log it in the journal.", C_DIM, 3, -1);
+    char hint[160];
+    gfx_text_wrap(FONT_SMALL, 110, 218, 270, ctl_subst("All four districts are open in Drift. Hold [SCAN] near a sonic landmark to log it in the journal.", hint, sizeof(hint)), C_DIM, 3, -1);
     ui_footer(a->menu_sel == 4 ? "S:RANDOM X:SELECT O:BACK" : "X:SELECT O:BACK");
 }
 
@@ -406,7 +430,7 @@ static void drift_render(void) {
 static void options_update(void) {
     App *a = &g_app;
     Progress *p = &a->prog;
-    list_nav(&a->menu_sel, 9);
+    list_nav(&a->menu_sel, 10);
     int d = lr();
     if (back()) { a->menu_sel = 4; app_set_state(ST_MENU); return; }
     if (d) {
@@ -414,17 +438,18 @@ static void options_update(void) {
         case 0: p->music_vol = (uint8_t)h_clampi(p->music_vol + d, 0, 10); break;
         case 1: p->sfx_vol = (uint8_t)h_clampi(p->sfx_vol + d, 0, 10); break;
         case 2: p->hud_mode = (uint8_t)((p->hud_mode + HUD_COUNT + d) % HUD_COUNT); break;
-        case 3: p->cam_mode = (uint8_t)((p->cam_mode + CAM_COUNT + d) % CAM_COUNT); break;
-        case 4: p->invert_lift ^= 1; break;
-        case 5: p->rain_density = (uint8_t)h_clampi(p->rain_density + d, 0, 3); break;
-        case 6: p->show_fps ^= 1; break;
-        case 7: p->paint = (uint8_t)((p->paint + 1) % 2); if (!(p->paints & (1u << p->paint))) { p->paint = 0; app_note("COMPLETE RECOVERY TO UNLOCK RAINWATER"); } break;
+        case 3: p->control_scheme = (uint8_t)((p->control_scheme + 1) % CTL_COUNT); break;
+        case 4: p->cam_mode = (uint8_t)((p->cam_mode + CAM_COUNT + d) % CAM_COUNT); break;
+        case 5: p->invert_lift ^= 1; break;
+        case 6: p->rain_density = (uint8_t)h_clampi(p->rain_density + d, 0, 3); break;
+        case 7: p->show_fps ^= 1; break;
+        case 8: p->paint = (uint8_t)((p->paint + 1) % 2); if (!(p->paints & (1u << p->paint))) { p->paint = 0; app_note("COMPLETE RECOVERY TO UNLOCK RAINWATER"); } break;
         default: break;
         }
         app_push_music();
     }
     if (ok()) {
-        if (a->menu_sel == 8) { app_set_state(ST_CONTROLS); return; }
+        if (a->menu_sel == 9) { app_set_state(ST_CONTROLS); return; }
         app_save();
     }
 }
@@ -438,12 +463,13 @@ static void options_render(void) {
     static const char *const paints[2] = { "MSA STANDARD", "RAINWATER" };
     gfx_rect(0, 0, SCR_W, SCR_H, RGBA(0, 0, 0, 160));
     ui_header("OPTIONS", "X: SAVE SETTINGS");
-    ui_panel(90, 44, 300, 188, 1.0f);
+    ui_panel(90, 42, 300, 194, 1.0f);
     char mv[8], sv[8];
     snprintf(mv, sizeof(mv), "%d", p->music_vol); snprintf(sv, sizeof(sv), "%d", p->sfx_vol);
-    const char *labels[9] = { "MUSIC VOLUME", "EFFECTS VOLUME", "HUD", "DEFAULT CAMERA", "INVERT ALTITUDE", "RAIN DENSITY", "PERFORMANCE OVERLAY", "MOTH PAINT", "CONTROLS REFERENCE" };
-    const char *vals[9] = { mv, sv, huds[p->hud_mode], cams[p->cam_mode], p->invert_lift ? "ON" : "OFF", rain[p->rain_density], p->show_fps ? "ON" : "OFF", paints[p->paint], NULL };
-    for (int i = 0; i < 9; i++) menu_item(110, 56 + 19.0f * (float)i, labels[i], vals[i], a->menu_sel == i, 1);
+    static const char *const schemes[CTL_COUNT] = { "FACE BUTTONS", "CLASSIC" };
+    const char *labels[10] = { "MUSIC VOLUME", "EFFECTS VOLUME", "HUD", "CONTROL SCHEME", "DEFAULT CAMERA", "INVERT ALTITUDE", "RAIN DENSITY", "PERFORMANCE OVERLAY", "MOTH PAINT", "CONTROLS REFERENCE" };
+    const char *vals[10] = { mv, sv, huds[p->hud_mode], schemes[p->control_scheme], cams[p->cam_mode], p->invert_lift ? "ON" : "OFF", rain[p->rain_density], p->show_fps ? "ON" : "OFF", paints[p->paint], NULL };
+    for (int i = 0; i < 10; i++) menu_item(110, 52 + 18.0f * (float)i, labels[i], vals[i], a->menu_sel == i, 1);
     if (a->note_t > 0) gfx_text(FONT_SMALL, SCR_W * 0.5f, 236, a->note, C_ACC, ALIGN_CENTER);
     ui_footer("X:SAVE O:BACK");
 }
@@ -488,24 +514,27 @@ static void load_render(void) {
 }
 
 static void controls_render(void) {
+    App *a = &g_app;
     gfx_rect(0, 0, SCR_W, SCR_H, RGBA(0, 0, 0, 190));
-    ui_header("CONTROLS", "THE MOTH");
-    static const char *const rows[][2] = {
-        { "ANALOGUE NUB", "Fly forward / back, strafe left / right" },
-        { "L / R", "Turn (yaw)" },
-        { "D-PAD UP / DOWN", "Ascend / descend" },
-        { "D-PAD LEFT / RIGHT", "Tilt the camera" },
-        { "CROSS", "Boost (hold, while moving forward)" },
-        { "SQUARE", "Brake and stabilise" },
-        { "TRIANGLE", "Scanner (hold)" },
-        { "CIRCLE", "Context action / EMP" },
-        { "SELECT", "Camera: chase, cockpit, cinematic" },
-        { "START", "Pause menu / Signal Console" },
-    };
-    ui_panel(30, 40, 420, 200, 1.0f);
+    ui_header("CONTROLS", a->prog.control_scheme == CTL_FACE ? "SCHEME: FACE BUTTONS" : "SCHEME: CLASSIC");
+    const char *rows_face[][2] = {
+        { "ANALOGUE NUB", "Fly forward / back, strafe left / right" }, { "L / R", "Turn left / right" },
+        { "TRIANGLE / CROSS", "Ascend / descend (hold)" }, { "SQUARE", "Boost (hold, while moving forward)" },
+        { "CIRCLE", "Scanner (hold) / EMP and action (press)" }, { "D-PAD DOWN", "Brake and stabilise" },
+        { "D-PAD UP", "Cycle HUD: full, minimal, off" }, { "D-PAD LEFT / RIGHT", "Tilt the camera" },
+        { "SELECT", "Camera: chase, cockpit, cinematic" }, { "START", "Pause menu / Signal Console" } };
+    const char *rows_classic[][2] = {
+        { "ANALOGUE NUB", "Fly forward / back, strafe left / right" }, { "L / R", "Turn left / right" },
+        { "D-PAD UP / DOWN", "Ascend / descend" }, { "D-PAD LEFT / RIGHT", "Tilt the camera" },
+        { "CROSS", "Boost (hold, while moving forward)" }, { "SQUARE", "Brake and stabilise" },
+        { "TRIANGLE", "Scanner (hold)" }, { "CIRCLE", "Context action / EMP" },
+        { "SELECT", "Camera: chase, cockpit, cinematic" }, { "START", "Pause menu / Signal Console" } };
+    const char *(*rows)[2] = a->prog.control_scheme == CTL_FACE ? rows_face : rows_classic;
+    ui_panel(24, 40, 432, 196, 1.0f);
     for (int i = 0; i < 10; i++) {
-        gfx_text(FONT_SMALL, 46, 52 + 18.0f * (float)i, rows[i][0], C_SEL, ALIGN_LEFT);
-        gfx_text(FONT_SMALL, 200, 52 + 18.0f * (float)i, rows[i][1], C_TXT, ALIGN_LEFT);
+        float y = 50 + 18.0f * (float)i;
+        gfx_text(FONT_SMALL, 40, y, rows[i][0], C_SEL, ALIGN_LEFT);
+        gfx_text(FONT_SMALL, 192, y, rows[i][1], C_TXT, ALIGN_LEFT);
     }
     ui_footer("O:BACK");
 }
@@ -560,7 +589,7 @@ void menus_update(float dt) {
     case ST_DRIFT_SETUP: drift_update(); break;
     case ST_OPTIONS: options_update(); break;
     case ST_LOAD: load_update(); break;
-    case ST_CONTROLS: if (back() || ok()) { g_app.menu_sel = 8; app_set_state(ST_OPTIONS); } break;
+    case ST_CONTROLS: if (back() || ok()) { g_app.menu_sel = 9; app_set_state(ST_OPTIONS); } break;
     case ST_CREDITS: credits_update(); break;
     default: break;
     }

@@ -204,8 +204,8 @@ static void test_flight(void) {
     world_generate(w, DISTRICT_CIVIC);
     Craft a, b;
     memset(&a, 0, sizeof(a)); memset(&b, 0, sizeof(b));
-    craft_init(&a, v3(0, 300, 0), 0);
-    craft_init(&b, v3(0, 300, 0), 0);
+    craft_init(&a, v3(0, 440, 0), 0);
+    craft_init(&b, v3(0, 440, 0), 0);
     FlightInput in = {0};
     in.fwd = 1.0f; in.yaw = 0.3f;
     for (int i = 0; i < 300; i++) craft_update(&a, w, &in, 1.0f / 60.0f);
@@ -218,6 +218,25 @@ static void test_flight(void) {
     for (int i = 0; i < 600; i++) craft_update(&a, w, &none, 1.0f / 60.0f);
     CHECK(a.speed < 1.0f, "settles to hover (%.2f m/s)", a.speed);
     CHECK(fabsf(a.pos.y - y0) < 1.0f, "holds altitude while hovering");
+    /* handedness: "right" on the controls must be right on screen. The renderer's
+     * screen-right is cross(forward, up) (see gfx_set_camera). */
+    {
+        Craft h; memset(&h, 0, sizeof(h));
+        craft_init(&h, v3(0, 440, 0), 0.7f);
+        Camera cam; camera_init(&cam, &h);
+        V3 f0 = v3_norm(v3_sub(cam.target, cam.eye));
+        V3 scr_right = v3_norm(v3_cross(f0, v3(0, 1, 0)));
+        V3 start = h.pos;
+        FlightInput r = {0}; r.strafe = 1.0f;
+        for (int i = 0; i < 60; i++) craft_update(&h, w, &r, 1.0f / 60.0f);
+        CHECK(v3_dot(v3_sub(h.pos, start), scr_right) > 3.0f, "stick right strafes toward screen-right");
+        CHECK(h.bank > 0.05f, "strafing right banks right (bank %.2f)", h.bank);
+        craft_init(&h, v3(0, 440, 0), 0.7f);
+        FlightInput t = {0}; t.yaw = 1.0f;
+        for (int i = 0; i < 30; i++) craft_update(&h, w, &t, 1.0f / 60.0f);
+        CHECK(v3_dot(craft_forward(&h), scr_right) > 0.1f, "R trigger turns the nose toward screen-right");
+        CHECK(v3_dot(craft_right(&h), v3_norm(v3_cross(craft_forward(&h), v3(0, 1, 0)))) > 0.99f, "craft_right equals forward x up");
+    }
     /* fly into a wall: the craft must not pass through */
     Craft c; memset(&c, 0, sizeof(c));
     const Poi *arch = world_poi(w, "archive");

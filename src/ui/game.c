@@ -57,12 +57,26 @@ void game_update(float dt, int controls) {
         fi.fwd = in->ly;
         fi.strafe = in->lx;
         fi.yaw = ((in->held & PSP_CTRL_RTRIGGER) ? 1.0f : 0.0f) - ((in->held & PSP_CTRL_LTRIGGER) ? 1.0f : 0.0f);
-        float up = (in->held & PSP_CTRL_UP) ? 1.0f : 0.0f, dn = (in->held & PSP_CTRL_DOWN) ? 1.0f : 0.0f;
+        uint32_t b_up, b_down, b_boost, b_brake, b_scan, b_act;
+        if (a->prog.control_scheme == CTL_FACE) {
+            /* right thumb: altitude on the face buttons, so the left thumb never leaves the nub */
+            b_up = PSP_CTRL_TRIANGLE; b_down = PSP_CTRL_CROSS; b_boost = PSP_CTRL_SQUARE;
+            b_brake = PSP_CTRL_DOWN; b_scan = PSP_CTRL_CIRCLE; b_act = PSP_CTRL_CIRCLE;
+            if (in->pressed & PSP_CTRL_UP) {    /* D-pad up cycles the HUD */
+                a->prog.hud_mode = (uint8_t)((a->prog.hud_mode + 1) % HUD_COUNT);
+                static const char *const hn[HUD_COUNT] = { "HUD: FULL", "HUD: MINIMAL", "HUD: OFF" };
+                app_note(hn[a->prog.hud_mode]);
+            }
+        } else {
+            b_up = PSP_CTRL_UP; b_down = PSP_CTRL_DOWN; b_boost = PSP_CTRL_CROSS;
+            b_brake = PSP_CTRL_SQUARE; b_scan = PSP_CTRL_TRIANGLE; b_act = PSP_CTRL_CIRCLE;
+        }
+        float up = (in->held & b_up) ? 1.0f : 0.0f, dn = (in->held & b_down) ? 1.0f : 0.0f;
         fi.lift = a->prog.invert_lift ? dn - up : up - dn;
-        fi.boost = (in->held & PSP_CTRL_CROSS) != 0;
-        fi.brake = (in->held & PSP_CTRL_SQUARE) != 0;
-        mi.scan_held = (in->held & PSP_CTRL_TRIANGLE) != 0;
-        mi.action_pressed = (in->pressed & PSP_CTRL_CIRCLE) != 0;
+        fi.boost = (in->held & b_boost) != 0;
+        fi.brake = (in->held & b_brake) != 0;
+        mi.scan_held = (in->held & b_scan) != 0;
+        mi.action_pressed = (in->pressed & b_act) != 0;
         mi.any_input = h_absf(fi.fwd) > 0.05f || h_absf(fi.strafe) > 0.05f || fi.yaw != 0 || fi.lift != 0 || fi.boost || fi.brake;
         if (in->held & PSP_CTRL_LEFT) a->cam.pitch_offset = h_clampf(a->cam.pitch_offset + dt * 0.8f, -0.6f, 0.6f);
         if (in->held & PSP_CTRL_RIGHT) a->cam.pitch_offset = h_clampf(a->cam.pitch_offset - dt * 0.8f, -0.6f, 0.6f);
@@ -72,8 +86,8 @@ void game_update(float dt, int controls) {
             app_note(names[a->cam.mode]);
             sfx_play(&a->sfx, SFX_UI_MOVE);
         }
-        if ((in->pressed & PSP_CTRL_CROSS) && a->craft.boost_energy > 0.1f && fi.fwd > 0.1f) sfx_play(&a->sfx, SFX_BOOST);
-        if (mi.action_pressed && a->mode == MODE_DRIFT) app_note(a->prog.has_emp ? "EMP DISCHARGED - NOTHING TO DISABLE" : "NO CONTEXT ACTION HERE");
+        if ((in->pressed & b_boost) && a->craft.boost_energy > 0.1f && fi.fwd > 0.1f) sfx_play(&a->sfx, SFX_BOOST);
+        if (mi.action_pressed && a->mode == MODE_DRIFT && b_act != b_scan) app_note(a->prog.has_emp ? "EMP DISCHARGED - NOTHING TO DISABLE" : "NO CONTEXT ACTION HERE");
     }
 
     float dmg = craft_update(&a->craft, &a->world, &fi, dt);

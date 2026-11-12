@@ -24,7 +24,7 @@ typedef enum {
 enum { MODE_NONE = 0, MODE_PATROL, MODE_DRIFT, MODE_ATTRACT };
 
 #define TX_QUEUE 6
-typedef struct { const char *speaker; const char *text; float t, dur; } Transmission;
+typedef struct { const char *speaker; char text[200]; float t, dur; } Transmission;
 
 typedef struct {
     AppState state, console_return;
@@ -97,6 +97,14 @@ void menus_render(void);
 void ui_panel(float x, float y, float w, float h, float alpha);
 void ui_header(const char *title, const char *sub);
 void ui_footer(const char *hints);
+
+/* controls.c */
+enum { CTL_ACT_UP = 0, CTL_ACT_DOWN, CTL_ACT_BOOST, CTL_ACT_BRAKE, CTL_ACT_SCAN, CTL_ACT_EMP };
+const char *ctl_name(int action);
+char ctl_glyph(int action);
+const char *ctl_subst(const char *in, char *buf, int n);   /* replaces [UP] [DOWN] [BOOST] [BRAKE] [SCAN] [EMP] */
+void ctl_hint_panel(float centre_x, float y, float alpha);
+float ui_glyph(float x, float y, char b, float alpha);       /* X O S T face buttons, u d D-pad, L R */
 
 /* console.c */
 void console_update(float dt);

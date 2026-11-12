@@ -30,7 +30,9 @@ void craft_apply_upgrades(Craft *c, int boost_level, int hull_level) {
 }
 
 V3 craft_forward(const Craft *c) { return v3(sinf(c->yaw), 0, cosf(c->yaw)); }
-V3 craft_right(const Craft *c) { return v3(cosf(c->yaw), 0, -sinf(c->yaw)); }
+/* World is right-handed, Y up: looking along +Z, screen-right is -X. Yaw increases
+ * counter-clockwise seen from above, so turning right DEcreases yaw. */
+V3 craft_right(const Craft *c) { return v3(-cosf(c->yaw), 0, sinf(c->yaw)); }
 
 static float step(Craft *c, const World *w, const FlightInput *in) {
     const float dt = FLIGHT_DT;
@@ -38,7 +40,7 @@ static float step(Craft *c, const World *w, const FlightInput *in) {
     /* yaw: rate approaches the requested rate, slightly slower at high speed */
     float max_rate = 1.75f - 0.5f * h_clampf(c->speed / 80.0f, 0.0f, 1.0f);
     c->yaw_rate += (in->yaw * max_rate - c->yaw_rate) * (1.0f - expf(-7.0f * dt));
-    c->yaw = h_wrap_angle(c->yaw + c->yaw_rate * dt);
+    c->yaw = h_wrap_angle(c->yaw - c->yaw_rate * dt);   /* yaw_rate > 0 = turning right */
 
     V3 f = craft_forward(c), r = craft_right(c);
     int boost = in->boost && c->boost_energy > 0.02f && in->fwd > 0.1f;
@@ -93,7 +95,7 @@ static float step(Craft *c, const World *w, const FlightInput *in) {
     c->speed = v3_len(c->vel);
     /* visual attitude: bank into strafe and turns, pitch with fore/aft acceleration */
     float lv = v3_dot(c->vel, r), fv = v3_dot(c->vel, f);
-    float bank_t = -(in->strafe * 0.38f + c->yaw_rate * 0.22f + lv * 0.004f);
+    float bank_t = in->strafe * 0.38f + c->yaw_rate * 0.22f + lv * 0.004f;   /* > 0 = right wing down */
     float pitch_t = in->fwd * 0.16f + (boost ? 0.1f : 0.0f) - (in->brake ? 0.12f * h_clampf(fv / 30.0f, 0.0f, 1.0f) : 0.0f) - in->lift * 0.05f;
     c->bank += (h_clampf(bank_t, -0.7f, 0.7f) - c->bank) * (1.0f - expf(-5.0f * dt));
     c->pitch += (h_clampf(pitch_t, -0.4f, 0.4f) - c->pitch) * (1.0f - expf(-4.0f * dt));
@@ -141,7 +143,7 @@ void camera_update(Camera *cam, const Craft *c, const World *w, float dt) {
         V3 look = v3_add(v3_scale(f, cosf(p)), v3(0, sinf(p), 0));
         cam->target = v3_madd(cam->eye, look, 20.0f);
         float b = c->bank * 0.6f;
-        cam->up = v3_add(v3_scale(v3(0, 1, 0), cosf(b)), v3_scale(r, -sinf(b)));
+        cam->up = v3_add(v3_scale(v3(0, 1, 0), cosf(b)), v3_scale(r, sinf(b)));
         cam->fov = 70.0f + 8.0f * spd;
         break;
     }
@@ -166,7 +168,7 @@ void camera_update(Camera *cam, const Craft *c, const World *w, float dt) {
         V3 tgt = v3_add(v3_madd(c->pos, f, 8.0f + 10.0f * spd), v3(0, 1.0f - cam->pitch_offset * 6.0f, 0));
         cam->target = v3_lerp(cam->target, tgt, 1.0f - expf(-9.0f * dt));
         float b = c->bank * 0.25f;
-        cam->up = v3_add(v3_scale(v3(0, 1, 0), cosf(b)), v3_scale(r, -sinf(b)));
+        cam->up = v3_add(v3_scale(v3(0, 1, 0), cosf(b)), v3_scale(r, sinf(b)));
         cam->fov = 62.0f + 10.0f * spd + (c->boosting ? 4.0f : 0.0f);
         break;
     }

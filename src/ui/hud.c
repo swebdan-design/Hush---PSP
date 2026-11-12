@@ -51,7 +51,7 @@ static void radar(float cx, float cy, float r) {
     const float range = 320.0f;
     float cy_ = cosf(a->craft.yaw), sy = sinf(a->craft.yaw);
     #define TO_R(px, pz, ox, oy) do { float dx = (px) - a->craft.pos.x, dz = (pz) - a->craft.pos.z; \
-        float rx = dx * cy_ - dz * sy, rz = dx * sy + dz * cy_; ox = cx + rx / range * r; oy = cy - rz / range * r; } while (0)
+        float rx = dz * sy - dx * cy_, rz = dx * sy + dz * cy_; ox = cx + rx / range * r; oy = cy - rz / range * r; } while (0)
     /* traffic */
     for (int i = 0; i < a->traffic.n; i++) {
         const Vehicle *v = &a->traffic.v[i];
@@ -170,7 +170,7 @@ static void cockpit_panel(void) {
     }
     float roll = c->bank, pitch = c->pitch * 60.0f;
     float dx = cosf(roll) * hr, dy = sinf(roll) * hr;
-    gfx_line(hx - dx, hy + pitch - dy, hx + dx, hy + pitch + dy, C_AMBER);
+    gfx_line(hx - dx, hy + pitch + dy, hx + dx, hy + pitch - dy, C_AMBER);   /* banking right raises the horizon's right end */
     gfx_line(hx - 10, hy, hx - 3, hy, C_WHITE); gfx_line(hx + 3, hy, hx + 10, hy, C_WHITE);
     gfx_rect_outline(hx - hr, hy - hr, hr * 2, hr * 2, RGBA(80, 90, 100, 255));
     /* pitch ladder */
@@ -227,7 +227,7 @@ void hud_draw(void) {
     if (has_marker) { V3 d = v3_sub(a->mission.marker, c->pos); bearing = atan2f(d.x, d.z); }
     if (a->cam.mode != CAM_COCKPIT) {
         if (mode == HUD_FULL) {
-            compass(SCR_W * 0.5f, 6, 200, c->yaw, has_marker, bearing);
+            compass(SCR_W * 0.5f, 6, 200, -c->yaw, has_marker, -bearing);   /* heading grows clockwise */
             /* left: speed, right: altitude */
             snprintf(buf, sizeof(buf), "%03d", (int)(c->speed * 3.6f));
             gfx_rect(8, 112, 54, 30, C_PANEL);
@@ -258,7 +258,8 @@ void hud_draw(void) {
     float ty = a->cam.mode == CAM_CINEMATIC ? 30 : 24;
     if (a->mode == MODE_PATROL && a->mission.state == MS_ACTIVE) {
         gfx_text(FONT_SMALL, 10, ty, hush_missions[a->mission.mission].title, C_AMBER, ALIGN_LEFT);
-        gfx_text(FONT_SMALL, 10, ty + 11, a->mission.objective, C_WHITE, ALIGN_LEFT);
+        char ob[96];
+        gfx_text(FONT_SMALL, 10, ty + 11, ctl_subst(a->mission.objective, ob, sizeof(ob)), C_WHITE, ALIGN_LEFT);
         if (hush_missions[a->mission.mission].steps[a->mission.step].time_limit > 0) {
             snprintf(buf, sizeof(buf), "TIME %02d:%02d", (int)a->mission.timer / 60, (int)a->mission.timer % 60);
             gfx_text(FONT_SMALL, 10, ty + 22, buf, a->mission.timer < 20 ? C_RED : C_AMBER, ALIGN_LEFT);
@@ -293,5 +294,6 @@ void hud_draw(void) {
         snprintf(buf, sizeof(buf), "%2.0f fps cpu %4.1fms gpu %4.1fms tri %d", a->fps, gfx_last_cpu_ms, gfx_last_gpu_wait_ms, rs->tris_drawn);
         gfx_text(FONT_SMALL, 8, SCR_H - 92, buf, RGBA(255, 255, 255, 200), ALIGN_LEFT);
     }
+    if (a->state_t < 9.0f && a->mode != MODE_ATTRACT) ctl_hint_panel(SCR_W * 0.5f, SCR_H - 98, h_clampf(9.0f - a->state_t, 0.0f, 1.0f));
     hud_draw_transmissions();
 }

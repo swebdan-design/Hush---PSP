@@ -21,6 +21,7 @@
 #define SAVE_MAX_BYTES 4096
 
 enum { HUD_FULL = 0, HUD_MINIMAL, HUD_OFF, HUD_COUNT };
+enum { CTL_FACE = 0, CTL_CLASSIC, CTL_COUNT };
 
 typedef struct {
     uint32_t missions_done;      /* bit per mission */
@@ -40,6 +41,7 @@ typedef struct {
     uint8_t hud_mode, cam_mode, show_fps, rain_density, music_vol, sfx_vol, invert_lift;
     uint8_t drift_district, drift_weather, drift_tod, drift_preset;
     uint32_t play_seconds;
+    uint8_t control_scheme;      /* CTL_FACE (default) or CTL_CLASSIC; appended in v1 saves, optional on load */
 } Progress;
 
 void progress_defaults(Progress *p);

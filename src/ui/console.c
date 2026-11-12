@@ -322,11 +322,12 @@ void console_render(void) {
     int n;
     const Row *rows = page_rows(a->console_page, &n);
     if (a->console_page == 4) {
+        char hb[64];
         for (int i = 0; i < LM_COUNT; i++) {
             int found = (a->prog.landmarks >> i) & 1;
             float y = 44 + (float)i * 40;
             gfx_text(FONT_SMALL, 16, y, found ? hush_landmark_names[i] : "UNIDENTIFIED TRANSMISSION", found ? RGBA(220, 170, 255, 255) : C_DIM, ALIGN_LEFT);
-            gfx_text_wrap(FONT_SMALL, 16, y + 12, 232, found ? lm_desc[i] : "Hold TRIANGLE near it to identify.", found ? C_TXT : RGBA(90, 98, 108, 220), 2, -1);
+            gfx_text_wrap(FONT_SMALL, 16, y + 12, 232, found ? lm_desc[i] : ctl_subst("Hold [SCAN] near it to identify.", hb, sizeof(hb)), found ? C_TXT : RGBA(90, 98, 108, 220), 2, -1);
         }
     } else {
         int top = h_clampi(a->console_sel - 6, 0, h_maxi(0, n - 13));

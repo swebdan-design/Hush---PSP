@@ -60,8 +60,9 @@ void app_tx(const char *speaker, const char *text) {
     if (!text) return;
     if (a->tx_n >= TX_QUEUE) { for (int i = 1; i < TX_QUEUE; i++) a->tx[i - 1] = a->tx[i]; a->tx_n--; }
     Transmission *t = &a->tx[a->tx_n++];
-    t->speaker = speaker; t->text = text; t->t = 0;
-    t->dur = 3.0f + (float)strlen(text) / 22.0f;
+    t->speaker = speaker; t->t = 0;
+    ctl_subst(text, t->text, sizeof(t->text));
+    t->dur = 3.0f + (float)strlen(t->text) / 22.0f;
 }
 
 static void loading_screen(const char *what) {
@@ -192,9 +193,9 @@ static void autotest_tick(float dt) {
     case 1: in->s_held = PSP_CTRL_CROSS; if (a->state == ST_MENU) NEXT(); break;
     case 2: if (g_step_t > 1.0f) { shot("main_menu"); NEXT(); } break;
     case 3: a->prog.drift_district = DISTRICT_STACKS; a->prog.drift_weather = WX_HEAVY_RAIN; app_start_drift(); printf("AUTOTEST: drift started\n"); NEXT(); break;
-    case 4: in->s_ly = 0.9f; in->s_lx = 0.2f; if (g_step_t > 2) in->s_held = PSP_CTRL_RTRIGGER | PSP_CTRL_UP;
+    case 4: in->s_ly = 0.9f; in->s_lx = 0.2f; if (g_step_t > 2) in->s_held = PSP_CTRL_RTRIGGER | PSP_CTRL_TRIANGLE;
         if (g_step_t > 6.0f) { shot("drift_stacks_rain"); perf("drift_stacks"); NEXT(); } break;
-    case 5: in->s_ly = 0.6f; in->s_held = PSP_CTRL_DOWN; if (g_step_t > 4.0f) { shot("drift_low"); perf("drift_low"); NEXT(); } break;
+    case 5: in->s_ly = 0.6f; in->s_held = PSP_CTRL_CROSS; if (g_step_t > 4.0f) { shot("drift_low"); perf("drift_low"); NEXT(); } break;
     case 6: a->console_return = ST_PLAY; a->console_overlay = 1; a->console_page = 0; a->console_sel = 4; app_set_state(ST_CONSOLE); NEXT(); break;
     case 7: if (g_step_t > 0.5f && g_step_t < 1.5f) in->s_held = PSP_CTRL_LEFT; /* reduce percussion */
         if (g_step_t > 3.0f) { shot("console_mix"); printf("AUTOTEST: percussion volume now %.2f\n", a->prog.music.vol[VOL_PERC]); a->console_page = 1; NEXT(); } break;
@@ -218,7 +219,7 @@ static void autotest_tick(float dt) {
     }
     case 16: in->s_ly = 0.8f; in->s_held = PSP_CTRL_LTRIGGER; if (g_step_t > 5.0f) { shot("drift_works"); perf("drift_works"); a->prog.drift_district = DISTRICT_UNDERTOW; a->prog.drift_weather = WX_FOG; app_start_drift(); NEXT(); } break;
     case 17: in->s_ly = 0.8f; if (g_step_t > 5.0f) { shot("drift_undertow"); perf("drift_undertow"); a->prog.drift_district = DISTRICT_CIVIC; a->prog.drift_weather = WX_LIGHT_RAIN; a->prog.drift_tod = TOD_TWILIGHT; app_start_drift(); NEXT(); } break;
-    case 18: in->s_ly = 0.9f; in->s_held = PSP_CTRL_UP; if (g_step_t > 6.0f) { shot("drift_civic_twilight"); perf("drift_civic"); a->console_return = ST_MENU; a->console_overlay = 0; app_set_state(ST_CONSOLE); NEXT(); } break;
+    case 18: in->s_ly = 0.9f; in->s_held = PSP_CTRL_TRIANGLE; if (g_step_t > 6.0f) { shot("drift_civic_twilight"); perf("drift_civic"); a->console_return = ST_MENU; a->console_overlay = 0; app_set_state(ST_CONSOLE); NEXT(); } break;
     case 19: if (g_step_t > 3.0f) { shot("console_standalone"); a->mission_id = 0; app_set_state(ST_BRIEFING); NEXT(); } break;
     case 20: if (g_step_t > 4.0f) { shot("briefing"); printf("AUTOTEST: done, %d frames, audio blocks %u late %u\n", gfx_frame_count, audio_out_blocks(), audio_out_underruns()); a->quit = 1; } break;
     }

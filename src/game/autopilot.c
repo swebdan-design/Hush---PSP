@@ -47,7 +47,7 @@ static void steer(const Craft *c, V3 goal, FlightInput *in, float max_fwd, int f
     float dh = sqrtf(d.x * d.x + d.z * d.z);
     V3 look = face_goal ? d : v3_sub(face, c->pos);
     float diff = h_wrap_angle(atan2f(look.x, look.z) - c->yaw);
-    in->yaw = h_clampf(diff * 2.5f, -1.0f, 1.0f);
+    in->yaw = h_clampf(-diff * 2.5f, -1.0f, 1.0f);   /* positive input turns right = decreasing yaw */
     V3 f = craft_forward(c), r = craft_right(c);
     V3 dn = dh > 0.01f ? v3_scale(v3(d.x, 0, d.z), 1.0f / dh) : v3(0, 0, 0);
     float spd = h_clampf(dh / 25.0f, 0.0f, 1.0f) * max_fwd;
@@ -93,7 +93,7 @@ void autopilot_mission(Autopilot *a, const World *w, const Traffic *t, const Cra
     case OB_SCAN: case OB_LANDMARK:
         if (nav_to(a, w, c, a->ap, in, 1, m->target) || v3_dist(c->pos, a->ap) < 6.0f) {
             float want = atan2f(m->target.x - c->pos.x, m->target.z - c->pos.z);
-            in->yaw = h_clampf(h_wrap_angle(want - c->yaw) * 2.5f, -1, 1);
+            in->yaw = h_clampf(-h_wrap_angle(want - c->yaw) * 2.5f, -1, 1);
             mi->scan_held = 1;
         }
         break;

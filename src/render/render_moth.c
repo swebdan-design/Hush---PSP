@@ -174,8 +174,9 @@ void moth_draw(const Craft *c, float time, int scheme, int draw_body, float fog_
         }
     if (!draw_body) return;
     /* running lights: port red, starboard green, white tail strobe, amber scanner */
-    rw_light(xform(&m, v3(-3.05f, 0.1f, 1.25f)), 0.55f, RGBA(255, 40, 30, 255), 1.0f);
-    rw_light(xform(&m, v3(3.05f, 0.1f, 1.25f)), 0.55f, RGBA(40, 255, 120, 255), 1.0f);
+    /* model +X is the craft's port (left) side in this right-handed world */
+    rw_light(xform(&m, v3(3.05f, 0.1f, 1.25f)), 0.55f, RGBA(255, 40, 30, 255), 1.0f);
+    rw_light(xform(&m, v3(-3.05f, 0.1f, 1.25f)), 0.55f, RGBA(40, 255, 120, 255), 1.0f);
     float strobe = fmodf(time * 1.1f, 1.0f) < 0.06f ? 1.0f : 0.0f;
     rw_light(xform(&m, v3(0, 0.3f, -4.3f)), 1.2f, RGBA(255, 255, 255, 255), strobe);
     rw_light(xform(&m, v3(0, -1.05f, 1.75f)), 0.5f, RGBA(255, 190, 80, 255), 0.6f + 0.4f * sinf(time * 4.0f));
