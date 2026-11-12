@@ -99,6 +99,50 @@ static void signal_meter(float x, float y, float v) {
     }
 }
 
+/* signal hunting: no marker, only a trace meter, an edge chevron and the ping */
+static void hunt_display(void) {
+    App *a = &g_app;
+    const Hunt *h = &a->hunt;
+    if (a->mode == MODE_ATTRACT) return;
+    if (a->sig_flash_t > 0) {
+        float al = h_clampf(a->sig_flash_t, 0, 1);
+        char b[40];
+        snprintf(b, sizeof(b), "TRANSMISSION %02d CAPTURED", a->sig_flash_id + 1);
+        gfx_rect(0, 82, SCR_W, 30, col_alpha(RGBA(4, 16, 16, 200), al));
+        gfx_text(FONT_SMALL, SCR_W * 0.5f, 85, b, col_alpha(RGBA(140, 255, 230, 255), al), ALIGN_CENTER);
+        snprintf(b, sizeof(b), "%d / 8 IN %s", hunt_count_district(&a->world, a->prog.signals_found), a->world.name);
+        gfx_text(FONT_SMALL, SCR_W * 0.5f, 97, b, col_alpha(C_WHITE, al), ALIGN_CENTER);
+        return;
+    }
+    if (h->nearest < 0) return;
+    if (!a->scanning) {
+        /* passive hint: static on the band when one is close */
+        if (h->dist < 120.0f && hud_mode() == HUD_FULL && a->cam.mode != CAM_COCKPIT) {
+            float fl = 0.4f + 0.3f * sinf(a->time * 11.0f) * sinf(a->time * 3.7f);
+            gfx_text(FONT_SMALL, SCR_W * 0.5f, SCR_H - 26, "STATIC ON THE BAND - HOLD SCAN", RGBA(140, 255, 230, (int)(255 * fl)), ALIGN_CENTER);
+        }
+        return;
+    }
+    if (a->scan_t > 0 && a->scan_lm >= 0) return;   /* identifying a landmark takes the centre */
+    float cx = SCR_W * 0.5f, y = SCR_H * 0.5f + 16;
+    uint32_t tc = RGBA(140, 255, 230, 255);
+    gfx_text(FONT_SMALL, cx, y, h->capture > 0.01f ? "LOCKING TRANSMISSION" : "SIGNAL TRACE", tc, ALIGN_CENTER);
+    for (int i = 0; i < 12; i++) {
+        float on = h->strength * 12.0f - (float)i;
+        float bh = 2.0f + (float)i * 0.6f;
+        gfx_rect(cx - 36 + (float)i * 6, y + 22 - bh, 4, bh, on > 0 ? col_alpha(tc, 0.5f + 0.5f * h_clampf(on, 0, 1)) : RGBA(255, 255, 255, 30));
+    }
+    if (h->capture > 0.01f) bar(cx - 40, y + 26, 80, 3, h->capture, tc);
+    /* chevron toward the source when it is off the nose (strength sets its opacity) */
+    if (h_absf(h->bearing) > 0.3f) {
+        float side = h->bearing > 0 ? 1.0f : -1.0f;
+        float ex = cx + side * 150.0f, ey = SCR_H * 0.5f;
+        uint32_t c = col_alpha(tc, 0.35f + 0.65f * h->strength);
+        gfx_tri(ex + side * 9, ey, ex, ey - 7, ex, ey + 7, c);
+        if (h_absf(h->bearing) > 2.0f) gfx_tri(ex + side * 19, ey, ex + side * 10, ey - 7, ex + side * 10, ey + 7, c);
+    }
+}
+
 static void objective_marker(void) {
     App *a = &g_app;
     if (a->mode != MODE_PATROL || !a->mission.marker_on || a->mission.state != MS_ACTIVE) return;
@@ -274,6 +318,10 @@ void hud_draw(void) {
         gfx_text(FONT_SMALL, 10, ty + 11, a->world.name, C_WHITE, ALIGN_LEFT);
         snprintf(buf, sizeof(buf), "%s / %s", weather_names[a->wx.preset], tod_names[a->wx.tod_mode]);
         gfx_text(FONT_SMALL, 10, ty + 22, buf, C_DIM, ALIGN_LEFT);
+        if (a->mode == MODE_DRIFT) {
+            snprintf(buf, sizeof(buf), "SIGNALS %d/8", hunt_count_district(&a->world, a->prog.signals_found));
+            gfx_text(FONT_SMALL, 10, ty + 33, buf, RGBA(140, 255, 230, 200), ALIGN_LEFT);
+        }
     }
     if (a->cam.mode != CAM_COCKPIT) music_line(SCR_W - 8, ty, ALIGN_RIGHT);
     /* free scanner feedback */
@@ -281,9 +329,12 @@ void hud_draw(void) {
         snprintf(buf, sizeof(buf), "IDENTIFYING: %s", hush_landmark_names[a->scan_lm]);
         gfx_text(FONT_SMALL, SCR_W * 0.5f, SCR_H * 0.5f + 16, buf, RGBA(220, 170, 255, 255), ALIGN_CENTER);
         bar(SCR_W * 0.5f - 40, SCR_H * 0.5f + 28, 80, 3, a->scan_t / 2.0f, RGBA(220, 170, 255, 255));
+    } else if (a->scanning && a->hunt.nearest >= 0) {
+        /* signal trace shown by hunt_display */
     } else if (a->scanning && a->mode == MODE_DRIFT) {
         gfx_text(FONT_SMALL, SCR_W * 0.5f, SCR_H * 0.5f + 16, a->bridge.nearest_landmark >= 0 ? "SCANNING - FACE THE SOURCE" : "SCANNING - NO TRANSMISSION", C_DIM, ALIGN_CENTER);
     }
+    hunt_display();
     if (a->discovery_t > 0 && a->discovery_lm >= 0) {
         float al = h_clampf(a->discovery_t, 0, 1);
         gfx_rect(0, 64, SCR_W, 30, col_alpha(RGBA(10, 6, 20, 200), al));

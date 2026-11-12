@@ -120,6 +120,27 @@ Console, switch camera and hide the HUD.
 
 Hold the scanner button (○, or △ in the Classic scheme) near a sonic landmark to identify it; it is then written into the **Journal**.
 
+## Signal hunting
+
+Thirty-two unlicensed transmissions — eight in each district — are hidden in the city: down in the streets, on rooftops,
+high between the towers and out over the water. Nothing marks them on the map. When one is near, a faint shimmer hangs in
+the air and the HUD reports **STATIC ON THE BAND**. Hold the scanner and listen: the ping ticks faster the closer you are
+and the better you are facing it, the **SIGNAL TRACE** meter fills, and a chevron at the screen edge leans toward the source
+when it is off your nose. Fly into it (within about 14 m) and keep holding the scanner until the lock completes.
+
+A captured transmission plays once over the radio and is kept in the **Case File › Intercepts** (D-pad ←/→ to page).
+Its short melodic motif also joins the music: from then on the composer occasionally quotes the motifs you have collected,
+so every save slowly develops a sound of its own. The Drift HUD shows how many you have found in the current district.
+
+## The city notices you
+
+The streets react to the Moth. Pedestrians stop and look up when you hover across the street (some film you, phones
+flashing), and scatter from your downwash when you come down among them; you will hear the crowd murmur and overhear what
+they say about you. Cars stop and sound their horns when you hover in their lane; flying traffic climbs or dives around
+you; patrol craft passing close mention you on the police band. Billboards near the Moth switch to the Authority's
+messages. Hovering low throws up spray from the street or water, and holding the scanner too long near the ground
+overloads a junction: the lights around you brown out for a few seconds. None of this adds load to the music engine.
+
 # 8. Signal Console
 
 The onboard synthesizer, styled as municipal equipment. Open it from the main menu (no flying) or from the pause menu
@@ -192,9 +213,9 @@ Approach and the music changes gradually; hold the scanner to identify and log t
 
 # 13. Saving and loading
 
-Progress saves automatically when you complete an assignment, discover a landmark, or store a preset or seed; you can also
+Progress saves automatically when you complete an assignment, discover a landmark, capture a transmission, or store a preset or seed; you can also
 save from the pause menu and Options. The save (`hush.sav`, with a backup `hush.bak`) lives in the game folder
-(`ms0:/PSP/GAME/HUSH/`). It holds missions, unlocks, upgrades, landmarks, your synthesizer state, user presets, seeds,
+(`ms0:/PSP/GAME/HUSH/`). It holds missions, unlocks, upgrades, landmarks, intercepted transmissions, your synthesizer state, user presets, seeds,
 options and Drift settings. The save is checksummed: if it is damaged the backup is used; if both are damaged the game
 starts fresh rather than failing. **LOAD GAME** reloads the save or starts a new career.
 

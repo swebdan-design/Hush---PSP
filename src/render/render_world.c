@@ -321,6 +321,34 @@ static void clip_flush(void) {
     g_nclip = 0;
 }
 
+/* ---------------- the city's reaction to the Moth ---------------- */
+static V3 g_focus, g_brown_p;
+static int g_focus_scan;
+static float g_brown, g_fdt = 1.0f / 30.0f;
+static float g_adlock[MAX_ADS];   /* 0..1 per billboard: retargeted at the Moth */
+
+void rw_set_focus(V3 craft, int scanning, V3 brown_p, float brown, float dt) {
+    g_focus = craft; g_focus_scan = scanning; g_brown_p = brown_p; g_brown = brown; g_fdt = dt;
+}
+
+/* brightness multiplier for an emissive at p: brownout sag (with a sputter) and scanner interference */
+static float react_dim(V3 p, float time, int i) {
+    float m = 1.0f;
+    if (g_brown > 0.01f) {
+        float dx = p.x - g_brown_p.x, dz = p.z - g_brown_p.z;
+        if (dx * dx + dz * dz < 60.0f * 60.0f) {
+            float sputter = fmodf(time * 11.0f + (float)i * 0.37f, 1.0f) < 0.12f ? 0.7f : 0.0f;
+            m *= 1.0f - g_brown * (0.9f - sputter);
+        }
+    }
+    if (g_focus_scan) {
+        float dx = p.x - g_focus.x, dy = p.y - g_focus.y, dz = p.z - g_focus.z;
+        if (dx * dx + dy * dy + dz * dz < 30.0f * 30.0f && fmodf(time * 9.1f + (float)i * 0.53f, 1.0f) > 0.72f) m *= 0.25f;
+    }
+    return m;
+}
+static int react_any(void) { return g_brown > 0.01f || g_focus_scan; }
+
 void rw_set_quality(int q) { g_quality = h_clampi(q, 0, 3); }
 int rw_quality(void) { return g_quality; }
 
@@ -470,9 +498,22 @@ void rw_draw_world(const World *w, const Atmos *a, float time) {
                 if (!sphere_visible(ad->p, h_maxf(ad->w, ad->h), far_d)) continue;
                 float fl = 1.0f;
                 if (ad->flicker) { float ph = fmodf(time * 1.7f + (float)i * 0.37f, 7.0f); fl = (ph > 6.6f && ph < 6.75f) ? 0.15f : (ph > 6.8f && ph < 6.85f ? 0.3f : 1.0f); }
+                int id0 = ad->ad;
+                if (ad->sheet == 0 && i < MAX_ADS) {
+                    /* billboards near the Moth notice it: a glitch, then THE ARCHIVE / REPORT UNLICENSED SONG */
+                    float dx = ad->p.x - g_focus.x, dz = ad->p.z - g_focus.z, dy = ad->p.y - g_focus.y;
+                    int near = dx * dx + dz * dz < 48.0f * 48.0f && dy > -25.0f && dy < 30.0f;
+                    g_adlock[i] = h_approach(g_adlock[i], near ? 1.0f : 0.0f, near ? 1.6f : 0.5f, g_fdt);
+                    float L = g_adlock[i];
+                    if (L > 0.01f) {
+                        if (L > 0.85f) id0 = (i & 1) ? 9 : 7;
+                        else { int g = (int)(time * 14.0f + (float)i) ; id0 = (g & 1) ? ((i & 1) ? 9 : 7) : ad->ad; fl *= (g & 2) ? 0.35f : 1.0f; }
+                    }
+                }
+                if (react_any()) fl *= react_dim(ad->p, time, i);
                 uint32_t c = col_scale(RGBA(255, 255, 255, 255), fl * 0.97f);
                 float u0, u1, v0, v1;
-                if (ad->sheet == 0) { int id = ad->ad % 12; u0 = (float)(id % 2) * 0.5f; u1 = u0 + 0.5f; v0 = (float)(id / 2) * (64.0f / 512.0f); v1 = v0 + 64.0f / 512.0f; }
+                if (ad->sheet == 0) { int id = id0 % 12; u0 = (float)(id % 2) * 0.5f; u1 = u0 + 0.5f; v0 = (float)(id / 2) * (64.0f / 512.0f); v1 = v0 + 64.0f / 512.0f; }
                 else if (ad->sheet == 1) { int id = ad->ad % 8; u0 = (float)id * 0.125f; u1 = u0 + 0.125f; v0 = 0.0f; v1 = 0.5f; }
                 else { int id = ad->ad % 16; u0 = (float)(id % 4) * 0.25f; u1 = u0 + 0.25f; v0 = 0.5f + (float)(id / 4) * 0.125f; v1 = v0 + 0.125f; }
                 V3 hdir = ad->axis ? v3(0, 0, (float)-ad->facing) : v3((float)ad->facing, 0, 0);
@@ -507,6 +548,7 @@ static void draw_neon(const World *w, const Atmos *a, float time) {
         if (v3_len2(v3_sub(mid, eye)) > far2) continue;
         float al = 1.0f;
         if (n->flicker && fmodf(time * 2.3f + (float)i * 0.71f, 5.0f) > 4.6f) al = 0.2f;
+        if (react_any()) al *= react_dim(mid, time, i);
         uint32_t c = col_alpha(n->color, al);
         v[k].color = c; v[k].x = n->a.x; v[k].y = n->a.y; v[k].z = n->a.z; k++;
         v[k].color = c; v[k].x = n->b.x; v[k].y = n->b.y; v[k].z = n->b.z; k++;
@@ -673,6 +715,7 @@ void rw_draw_world_lights(const World *w, const Atmos *a, float time, float wet)
         float d2 = v3_len2(v3_sub(l->p, eye));
         if (d2 > far_d * far_d) continue;
         float b = blink_fn(l->blink, l->phase, time);
+        if (react_any()) b *= react_dim(l->p, time, i);
         rw_light(l->p, l->size, l->color, b);
         if (water && l->p.y > w->water_y && d2 < 380.0f * 380.0f && g_nfl < MAX_FRAME_LIGHTS)
             reflect_light(eye, l->p, w->water_y, l->size * 1.3f, l->color, b * 0.28f);
@@ -758,6 +801,28 @@ void rw_draw_effects(const World *w, const Weather *wx, const Atmos *a, float ti
             if (v3_dist(v3(c->x, c->y1, c->z), eye) > a->fog_far * 1.2f) continue;
             float ang = rr01() * H_TAU, rad = rr01() * c->r1 * 0.7f;
             spawn_puff(v3(c->x + cosf(ang) * rad, c->y1, c->z + sinf(ang) * rad), v3(1.5f, 5.0f + 3.0f * rr01(), 0.8f), 8.0f, 14.0f);
+        }
+        /* manhole steam drifting up from the street, only when the camera is down among it */
+        if (eye.y - w->ground_y < 90.0f) {
+            for (int i = 0; i < w->n_steams; i++) {
+                if (rr01() > 0.22f) continue;
+                V3 sp = w->steams[i];
+                if (v3_dist(sp, eye) > 130.0f) continue;
+                spawn_puff(v3(sp.x + (rr01() - 0.5f) * 0.8f, sp.y + 0.2f, sp.z + (rr01() - 0.5f) * 0.8f), v3((rr01() - 0.5f) * 0.6f, 2.0f + 1.5f * rr01(), (rr01() - 0.5f) * 0.6f), 4.0f, 2.2f);
+            }
+        }
+        /* the Moth's downwash: spray and grit blown outward from the surface beneath it */
+        {
+            float surf = w->water_y > w->ground_y ? w->water_y : w->ground_y;
+            float alt = g_focus.y - surf;
+            if (alt > 0.0f && alt < 12.0f && g_quality >= 1) {
+                float k = 1.0f - alt / 12.0f;
+                for (int j = 0; j < 2; j++) {
+                    if (rr01() > k) continue;
+                    float ang = rr01() * H_TAU, cs = cosf(ang), sn = sinf(ang);
+                    spawn_puff(v3(g_focus.x + cs * 2.5f, surf + 0.4f, g_focus.z + sn * 2.5f), v3(cs * (7.0f + 5.0f * k), 1.0f + 1.5f * rr01(), sn * (7.0f + 5.0f * k)), 1.1f, 1.6f + 1.2f * k);
+                }
+            }
         }
     }
     sceGuEnable(GU_DEPTH_TEST);

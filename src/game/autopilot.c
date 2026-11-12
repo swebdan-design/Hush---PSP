@@ -151,3 +151,8 @@ void autopilot_wander(Autopilot *a, const World *w, const Craft *c, FlightInput 
     nav_to(a, w, c, a->wander, in, 0, a->wander);
     in->fwd *= 0.7f; in->strafe *= 0.7f; in->yaw *= 0.6f; in->boost = 0;
 }
+
+int autopilot_fly_to(Autopilot *a, const World *w, const Craft *c, V3 goal, FlightInput *in) {
+    memset(in, 0, sizeof(*in));
+    return nav_to(a, w, c, goal, in, 0, goal);
+}

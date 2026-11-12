@@ -45,6 +45,7 @@ typedef struct {
     uint8_t control_scheme;      /* CTL_FACE (default) or CTL_CLASSIC; appended in v1 saves, optional on load */
     uint8_t story_flags;         /* bit0: prologue seen. Appended, optional on load */
     uint8_t detail;              /* DETAIL_AUTO (default), HIGH, MEDIUM, LOW. Appended, optional */
+    uint32_t signals_found;      /* bit per hidden transmission (signal hunting). Appended, optional */
 } Progress;
 
 void progress_defaults(Progress *p);

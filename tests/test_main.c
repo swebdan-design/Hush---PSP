@@ -11,6 +11,8 @@
 #include "../src/game/autopilot.h"
 #include "../src/game/crowd.h"
 #include "../src/render/guardclip.h"
+#include "../src/game/signals.h"
+#include "../src/game/story.h"
 #include "../src/audio/dsp.h"
 #include "../src/core/rng.h"
 #include <stdio.h>
@@ -296,7 +298,7 @@ static int run_mission_bot(int mi, float *time_out, float *hull_out) {
         FlightInput in; MissionInput mi_in;
         autopilot_mission(&ap, w, &t, &c, &m, &in, &mi_in);
         craft_update(&c, w, &in, dt);
-        traffic_update(&t, w, dt);
+        traffic_update(&t, w, dt, c.pos);
         mission_update(&m, w, &t, &c, &mi_in, dt);
         tsim += dt;
     }
@@ -424,6 +426,127 @@ static void test_guardclip(void) {
     CHECK(lost_visible == 0, "fuzz: no on-screen triangle disappears (%d lost)", lost_visible);
 }
 
+static void test_signals(void) {
+    printf("[signals] 32 hidden transmissions, each found by the autopilot using only the hunt logic\n");
+    uint32_t ids = 0;
+    for (int d = 0; d < DISTRICT_COUNT; d++) {
+        World *w = &g_world;
+        world_generate(w, d);
+        CHECK(w->n_signals == SIGNALS_PER_DISTRICT, "%s has %d transmissions", w->name, w->n_signals);
+        uint32_t mask = 0;
+        int found = 0;
+        float total_t = 0;
+        for (int k = 0; k < w->n_signals; k++) {
+            ids |= 1u << w->signals[k].id;
+            CHECK(story_intercept[w->signals[k].id] != NULL, "intercept text exists");
+            /* start at the pad and fly to where the hunt says the strongest unfound signal is */
+            Craft c; memset(&c, 0, sizeof(c));
+            craft_init(&c, w->spawn, w->spawn_yaw);
+            static Autopilot ap; autopilot_reset(&ap);
+            Hunt h; hunt_reset(&h);
+            float t = 0;
+            int got = -1;
+            V3 goal = w->signals[k].p;
+            uint32_t others = 0;
+            for (int j = 0; j < w->n_signals; j++) if (j != k) others |= 1u << w->signals[j].id;   /* hunt only this one */
+            while (t < 240.0f && got < 0) {
+                FlightInput in;
+                autopilot_fly_to(&ap, w, &c, goal, &in);
+                craft_update(&c, w, &in, 1.0f / 30.0f);
+                hunt_update(&h, w, &c, others | mask, 1, 1.0f / 30.0f);
+                if (h.found >= 0) got = h.found;
+                t += 1.0f / 30.0f;
+            }
+            if (got == (int)w->signals[k].id) { found++; mask |= 1u << got; total_t += t; }
+            else printf("    %s signal %d (kind %d at %.0f,%.0f,%.0f) not captured\n", w->name, k, w->signals[k].kind, goal.x, goal.y, goal.z);
+        }
+        CHECK(found == SIGNALS_PER_DISTRICT, "%s: all %d transmissions reachable and capturable (avg %.0fs)", w->name, found, found ? total_t / found : 0.0f);
+        CHECK(hunt_count_district(w, mask) == found, "district count matches");
+    }
+    CHECK(ids == 0xFFFFFFFFu, "32 distinct global ids (mask %08x)", ids);
+    /* the meter rises as you approach and aim */
+    World *w = &g_world;
+    world_generate(w, DISTRICT_STACKS);
+    Craft c; memset(&c, 0, sizeof(c));
+    V3 s0 = w->signals[0].p;
+    craft_init(&c, v3(s0.x + 200, s0.y, s0.z), 0);
+    c.yaw = atan2f(s0.x - c.pos.x, s0.z - c.pos.z);
+    Hunt h; hunt_reset(&h);
+    hunt_update(&h, w, &c, ~(1u << w->signals[0].id), 1, 0.1f);
+    float far_s = h.strength;
+    c.pos = v3(s0.x + 60, s0.y, s0.z);
+    hunt_update(&h, w, &c, ~(1u << w->signals[0].id), 1, 0.1f);
+    CHECK(h.strength > far_s && h.nearest == 0, "strength rises when closer (%.2f -> %.2f)", far_s, h.strength);
+    c.yaw += H_PI;
+    float aimed = h.strength;
+    hunt_update(&h, w, &c, ~(1u << w->signals[0].id), 1, 0.1f);
+    CHECK(h.strength < aimed, "facing away weakens it (%.2f -> %.2f)", aimed, h.strength);
+    /* collected motifs change the composition, deterministically */
+    {
+        MusicParams mp; hush_preset_get(PRESET_DRIFT, &mp); mp.seed = 55;
+        MusicEnv e = {0}; e.active = 1; e.district = DISTRICT_STACKS; e.landmark = -1; e.altitude = 0.4f; e.speed = 0.3f;
+        HushMusic *m = hush_music_instance();
+        static float buf[2048];
+        uint32_t hashes[3];
+        for (int run = 0; run < 3; run++) {
+            hush_music_init(m, 22050, &mp); hush_music_set_env(m, &e);
+            hush_music_set_collected(m, run == 0 ? 0u : 0x0000FF00u);
+            for (int i = 0; i < 22050 * 240 / 1024; i++) hush_music_render(m, buf, 1024);
+            hashes[run] = hush_music_event_hash(m);
+        }
+        CHECK(hashes[1] != hashes[0] && hashes[1] == hashes[2], "collected motifs recur in the music, reproducibly (%08x/%08x/%08x)", hashes[0], hashes[1], hashes[2]);
+    }
+    /* saves remember finds; old saves without the field still load */
+    Progress p, q; progress_defaults(&p); p.signals_found = 0x80000081u;
+    uint8_t buf[SAVE_MAX_BYTES]; int n = progress_serialize(&p, buf, sizeof(buf));
+    const char *err;
+    CHECK(progress_deserialize(&q, buf, n, &err) && q.signals_found == 0x80000081u, "signals saved and loaded");
+}
+
+static void test_city_reactions(void) {
+    printf("[city] the street reacts to the Moth\n");
+    World *w = &g_world;
+    world_generate(w, DISTRICT_STACKS);
+    static Traffic t;
+    traffic_init(&t, w);
+    /* find a ground car and park the Moth low in its lane, 15 m ahead */
+    int gi = -1;
+    for (int i = 0; i < t.n; i++) if (t.v[i].kind == VK_GROUND) { gi = i; break; }
+    CHECK(gi >= 0, "street traffic exists in the Stacks");
+    if (gi >= 0) {
+        Vehicle *v = &t.v[gi];
+        V3 moth = v3_add(v3_madd(v->pos, v->dir, 15.0f), v3(0, 3.0f, 0));
+        int horns = 0;
+        for (int k = 0; k < 30 * 6; k++) {
+            traffic_update(&t, w, 1.0f / 30.0f, v3_add(v3_madd(t.v[gi].pos, t.v[gi].dir, 15.0f), v3(0, 3.0f, 0)));
+            horns += t.horns; t.horns = 0;
+        }
+        (void)moth;
+        CHECK(t.v[gi].speed < 0.5f, "a car stops for a Moth hovering in its lane (%.1f m/s)", t.v[gi].speed);
+        CHECK(horns > 0, "and honks (%d)", horns);
+        for (int k = 0; k < 30 * 5; k++) traffic_update(&t, w, 1.0f / 30.0f, v3(0, 440, 0));
+        CHECK(t.v[gi].speed > 5.0f, "and drives on once it leaves (%.1f m/s)", t.v[gi].speed);
+    }
+    /* flying traffic swerves around a Moth in its path */
+    int ai = -1;
+    for (int i = 0; i < t.n; i++) if (t.v[i].kind == VK_CAR) { ai = i; break; }
+    if (ai >= 0) {
+        float base_y = w->lanes[t.v[ai].lane].pts[0].y;
+        for (int k = 0; k < 30 * 3; k++) traffic_update(&t, w, 1.0f / 30.0f, v3_add(t.v[ai].pos, v3(0, -1.0f - t.v[ai].avoid_y, 0)));
+        CHECK(h_absf(t.v[ai].avoid_y) > 4.0f, "a flying car swerves around the Moth (%.1f m, lane at %.0f)", t.v[ai].avoid_y, base_y);
+    }
+    /* pedestrians stop and look up at a Moth hovering across the street */
+    static Crowd c;
+    crowd_init(&c, w);
+    Ped *p = &c.p[0];
+    V3 moth = v3(p->pos.x + 30.0f, p->pos.y + 12.0f, p->pos.z);
+    for (int k = 0; k < 30 * 4; k++) crowd_update(&c, w, moth, 0.0f, 1.0f / 30.0f);
+    CHECK(c.p[0].watch > 0.6f && c.watchers > 0, "pedestrians stop to watch (%d watching)", c.watchers);
+    int photos = 0;
+    for (int k = 0; k < 30 * 20; k++) { crowd_update(&c, w, moth, 0.0f, 1.0f / 30.0f); for (int i = 0; i < c.n; i++) photos += c.p[i].photo > 0.11f; }
+    CHECK(photos > 0, "some take pictures (%d flashes)", photos);
+}
+
 static void test_env_bridge(void) {
     printf("[bridge] world drives music inputs\n");
     World *w = &g_world;
@@ -451,6 +574,8 @@ int main(int argc, char **argv) {
     test_env_bridge();
     test_crowd();
     test_guardclip();
+    test_signals();
+    test_city_reactions();
     test_missions();
     test_audio();
     if (!quick) test_audio_long();

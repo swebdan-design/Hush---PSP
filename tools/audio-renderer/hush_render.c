@@ -40,6 +40,7 @@ static void usage(void) {
         "  --tempo BPM --key 0-11 --mode NAME|auto --density X --darkness X --motion X\n"
         "  --complexity X --melody X --rhythm X   (override preset parameters)\n"
         "  --vol LAYER=X       layer volume override (drone|harmony|bass|perc|frag|texture), repeatable\n"
+        "  --collected MASK    collected transmission motifs (bit per id, e.g. 0xFF) that recur in the music\n"
         "  --trace             print every scheduled event (step layer note velocity)\n"
         "  --events            print the first 200 musical events\n"
         "  --quiet             only print the summary line\n"
@@ -96,6 +97,7 @@ int main(int argc, char **argv) {
     /* parameter overrides (NAN = keep preset) */
     float o_tempo = NAN, o_density = NAN, o_dark = NAN, o_motion = NAN, o_complex = NAN, o_melody = NAN, o_rhythm = NAN;
     int o_key = -1, o_mode = -3;
+    uint32_t collected = 0;
     float o_vol[VOL_COUNT];
     for (int k = 0; k < VOL_COUNT; k++) o_vol[k] = NAN;
 
@@ -142,6 +144,7 @@ int main(int argc, char **argv) {
         }
         else if (!strcmp(a, "--events")) show_events = 1;
         else if (!strcmp(a, "--trace")) hush_event_trace = trace_ev;
+        else if (!strcmp(a, "--collected")) { NEED(); collected = (uint32_t)strtoul(v, NULL, 0); }
         else if (!strcmp(a, "--quiet")) quiet = 1;
         else { fprintf(stderr, "unknown option '%s' (try --help)\n", a); return 2; }
     }
@@ -165,6 +168,7 @@ int main(int argc, char **argv) {
     HushMusic *m = hush_music_instance();
     hush_music_init(m, (float)rate, &P);
     hush_music_set_env(m, &env);
+    hush_music_set_collected(m, collected);
 
     uint32_t total = (uint32_t)(seconds * rate);
     FILE *f = NULL;

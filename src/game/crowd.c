@@ -49,6 +49,7 @@ void crowd_init(Crowd *c, const World *w) {
         p->coat = coats[xr(c) % 8];
         p->umb = umbs[xr(c) % 6];
         p->chatter = -1;
+        p->photo = -3.0f;
         p->pos = loop_pos(&w->blocks[p->block], p->t, w->ground_y + 0.35f, &p->yaw, p->dir);
     }
 }
@@ -56,6 +57,7 @@ void crowd_init(Crowd *c, const World *w) {
 void crowd_update(Crowd *c, const World *w, V3 craft, float rain, float dt) {
     float y = w->ground_y + 0.35f;
     c->tick++;
+    c->watchers = 0; c->fleeing = 0;
     if (w->n_blocks == 0) return;
     for (int i = 0; i < c->n; i++) {
         Ped *p = &c->p[i];
@@ -77,9 +79,21 @@ void crowd_update(Crowd *c, const World *w, V3 craft, float rain, float dt) {
             }
         }
         const Block *b = &w->blocks[p->block];
-        /* the Moth's downwash is frightening at head height */
+        /* the Moth's downwash is frightening at head height; a little further off it is fascinating */
         float dx = craft.x - p->pos.x, dz = craft.z - p->pos.z;
-        float near = (dx * dx + dz * dz < 18.0f * 18.0f) && craft.y < y + 14.0f;
+        float d2 = dx * dx + dz * dz, above = craft.y - y;
+        float near = (d2 < 18.0f * 18.0f) && above < 14.0f;
+        int curious = !near && d2 < 45.0f * 45.0f && above < 40.0f;
+        p->watch = h_approach(p->watch, curious ? 1.0f : 0.0f, curious ? 1.5f : 0.6f, dt);
+        if (p->photo > 0) p->photo -= dt;
+        if (p->watch > 0.6f) {
+            c->watchers++;
+            /* stop, turn to face the craft, and sometimes take a picture */
+            if (p->wait <= 0.0f) p->wait = 0.5f;
+            p->yaw = atan2f(dx, dz);
+            if ((p->style & 1) && p->photo <= -2.5f && xf(c) < 0.02f) p->photo = 0.12f;
+        }
+        if (near) c->fleeing++;
         p->flee = h_approach(p->flee, near ? 1.0f : 0.0f, near ? 6.0f : 0.4f, dt);
         if (near && p->wait > 0) p->wait = 0;
         if (near) {
@@ -95,7 +109,11 @@ void crowd_update(Crowd *c, const World *w, V3 craft, float rain, float dt) {
         else if (p->loiter && xf(c) < 0.004f) p->wait = 3.0f + 8.0f * xf(c);   /* window shopping */
         p->t += p->dir * spd * dt;
         p->phase += spd * dt * 4.2f;
-        p->pos = loop_pos(b, p->t, y, &p->yaw, p->dir);
+        {
+            float face = p->yaw;
+            p->pos = loop_pos(b, p->t, y, &p->yaw, p->dir);
+            if (p->watch > 0.6f) p->yaw = face;   /* keep looking up while watching */
+        }
         /* umbrellas go up when it rains, mostly */
         p->umbrella = (uint8_t)(rain > 0.15f ? ((i % 4) != 0) : ((i % 9) == 0));
     }

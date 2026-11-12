@@ -45,6 +45,7 @@ void app_note(const char *msg) {
 void app_push_music(void) {
     App *a = &g_app;
     hush_music_set_params(a->music, &a->prog.music);
+    hush_music_set_collected(a->music, a->prog.signals_found);
     audio_out_set_gain((float)a->prog.music_vol / 8.0f, (float)a->prog.sfx_vol / 7.0f);
 }
 
@@ -99,6 +100,9 @@ static void reset_flight(void) {
     autopilot_reset(&a->pilot);
     a->tx_n = 0;
     a->scan_lm = -1; a->scan_t = 0; a->discovery_t = 0;
+    hunt_reset(&a->hunt);
+    a->brown_t = 0; a->brown_next = 45.0f; a->scan_acc = 0; a->sig_flash_t = 0;
+    a->patrol_cool = 20.0f; a->react_cool = 0;
     a->hud_override = -1;
 }
 
@@ -162,6 +166,7 @@ static void perf(const char *tag) {
            audio_out_load() * 100.0f, audio_out_underruns(), audio_out_blocks(), (int)(sceKernelTotalFreeMemSize() / 1024));
 }
 static int g_step __attribute__((unused));
+static int g_horns __attribute__((unused));
 static float g_step_t;
 #if HUSH_AUTOTEST == 2
 /* campaign run: every mission in order, autopiloted, fast-forwarded */
@@ -209,7 +214,32 @@ static void autotest_tick(float dt) {
     }
     case 51: in->s_ly = 0.25f; if (g_step_t > 3.0f) { shot("street_chase"); perf("street"); a->cam.mode = CAM_COCKPIT; NEXT(); } break;
     case 52: in->s_ly = 0.2f; if (g_step_t > 2.0f) { shot("street_cockpit"); a->cam.mode = CAM_CINEMATIC; NEXT(); } break;
-    case 53: if (g_step_t > 3.0f) { shot("street_cinematic"); a->cam.mode = CAM_CHASE; g_step = 6; g_step_t = 0; } break;
+    case 53: if (g_step_t > 3.0f) { shot("street_cinematic"); a->cam.mode = CAM_CHASE; g_step = 70; g_step_t = 0; } break;
+    case 70: {   /* hover across the street from a pedestrian: the street stops and looks */
+        const Ped *p = &a->crowd.p[0];
+        const Block *pb = &a->world.blocks[p->block];
+        V3 out = v3_norm(v3(p->pos.x - (pb->x0 + pb->x1) * 0.5f, 0, p->pos.z - (pb->z0 + pb->z1) * 0.5f));
+        a->craft.pos = v3(p->pos.x + out.x * 9.0f, a->world.ground_y + 18.0f, p->pos.z + out.z * 9.0f);
+        a->craft.vel = v3(0, 0, 0); a->craft.yaw = atan2f(p->pos.x - a->craft.pos.x, p->pos.z - a->craft.pos.z);
+        camera_init(&a->cam, &a->craft);
+        g_horns = 0; NEXT(); break;
+    }
+    case 71: g_horns += a->traffic.horns;
+        if (g_step_t > 4.0f) { shot("street_watchers"); printf("AUTOTEST: street reaction watchers %d fleeing %d crowd_murmur %.2f\n", a->crowd.watchers, a->crowd.fleeing, a->sfx.crowd); NEXT(); } break;
+    case 72: {   /* signal hunt: start 45 m from an uncaptured transmission, nose pointing away */
+        const Signal *sg = &a->world.signals[0];
+        a->craft.pos = v3_add(sg->p, v3(0, 2.0f, -45.0f));
+        a->craft.vel = v3(0, 0, 0); a->craft.yaw = H_PI;   /* facing -Z, the signal is behind */
+        camera_init(&a->cam, &a->craft);
+        printf("AUTOTEST: signal hunt from 45 m, signal %d kind %d, found mask 0x%08x\n", sg->id, sg->kind, (unsigned)a->prog.signals_found);
+        NEXT(); break;
+    }
+    case 73: in->s_held = PSP_CTRL_CIRCLE;
+        if (g_step_t > 2.0f) { shot("signal_trace"); printf("AUTOTEST: trace strength %.2f bearing %.2f dist %.0f\n", a->hunt.strength, a->hunt.bearing, a->hunt.dist);
+            a->craft.pos = v3_add(a->world.signals[0].p, v3(0, 2.0f, -8.0f)); a->craft.vel = v3(0, 0, 0); a->craft.yaw = 0; camera_init(&a->cam, &a->craft); NEXT(); } break;
+    case 74: in->s_held = PSP_CTRL_CIRCLE;
+        if (a->sig_flash_t > 3.0f && g_step_t > 0.5f && g_step_t < 3.0f) { shot("signal_captured"); printf("AUTOTEST: signal captured in %.1fs, found mask 0x%08x, %d/8 here\n", g_step_t, (unsigned)a->prog.signals_found, hunt_count_district(&a->world, a->prog.signals_found)); g_step_t = 3.0f; }
+        if (g_step_t > 5.0f) { if (!a->prog.signals_found) printf("AUTOTEST: signal capture FAILED\n"); g_step = 6; g_step_t = 0; } break;
     case 6: a->console_return = ST_PLAY; a->console_overlay = 1; a->console_page = 0; a->console_sel = 4; app_set_state(ST_CONSOLE); NEXT(); break;
     case 7: if (g_step_t > 0.5f && g_step_t < 1.5f) in->s_held = PSP_CTRL_LEFT; /* reduce percussion */
         if (g_step_t > 3.0f) { shot("console_mix"); printf("AUTOTEST: percussion volume now %.2f\n", a->prog.music.vol[VOL_PERC]); a->console_page = 1; NEXT(); } break;
@@ -229,7 +259,7 @@ static void autotest_tick(float dt) {
     case 15: {
         Progress before = a->prog; char msg[64];
         int okk = save_io_load(&a->prog, msg, sizeof(msg));
-        printf("AUTOTEST: save reload %s (%s) missions 0x%03x->0x%03x districts 0x%x\n", okk ? "OK" : "FAILED", msg, before.missions_done, a->prog.missions_done, a->prog.districts);
+        printf("AUTOTEST: save reload %s (%s) missions 0x%03x->0x%03x districts 0x%x signals 0x%08x->0x%08x\n", okk ? "OK" : "FAILED", msg, before.missions_done, a->prog.missions_done, a->prog.districts, (unsigned)before.signals_found, (unsigned)a->prog.signals_found);
         a->prog.drift_district = DISTRICT_WORKS; a->prog.drift_weather = WX_CLEAR; app_start_drift(); NEXT(); break;
     }
     case 16: in->s_ly = 0.8f; in->s_held = PSP_CTRL_LTRIGGER; if (g_step_t > 5.0f) { shot("drift_works"); perf("drift_works"); a->prog.drift_district = DISTRICT_UNDERTOW; a->prog.drift_weather = WX_FOG; app_start_drift(); NEXT(); } break;
@@ -240,7 +270,8 @@ static void autotest_tick(float dt) {
     case 60: if (g_step_t > 2.5f) { shot("prologue"); a->prologue_card = 3; a->state_t = 0; NEXT(); } break;
     case 61: if (g_step_t > 2.5f) { shot("prologue_card4"); a->prologue_card = PROLOGUE_CARDS - 1; a->state_t = 99; NEXT(); } break;
     case 62: if (a->state == ST_CASEFILE && g_step_t > 1.0f) { a->menu_sel = 1; NEXT(); } break;
-    case 63: if (g_step_t > 1.0f) { shot("casefile"); printf("AUTOTEST: story_flags=%d\n", a->prog.story_flags);
+    case 63: if (g_step_t > 1.0f) { shot("casefile"); a->menu_sel = 2 + __builtin_popcount(a->prog.missions_done) - 1; NEXT(); } break;
+    case 64: if (g_step_t > 1.0f) { shot("casefile_intercepts"); printf("AUTOTEST: story_flags=%d\n", a->prog.story_flags);
         printf("AUTOTEST: done, %d frames, audio blocks %u late %u\n", gfx_frame_count, audio_out_blocks(), audio_out_underruns()); a->quit = 1; } break;
     }
 }

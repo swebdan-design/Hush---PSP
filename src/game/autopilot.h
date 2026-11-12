@@ -23,5 +23,7 @@ void autopilot_reset(Autopilot *a);
 void autopilot_mission(Autopilot *a, const World *w, const Traffic *t, const Craft *c, const MissionRun *m, FlightInput *in, MissionInput *mi);
 /* gentle sightseeing between random rooftops and landmarks */
 void autopilot_wander(Autopilot *a, const World *w, const Craft *c, FlightInput *in, float dt);
+/* climb, traverse and descend to a point; returns 1 when within 3 m */
+int autopilot_fly_to(Autopilot *a, const World *w, const Craft *c, V3 goal, FlightInput *in);
 
 #endif

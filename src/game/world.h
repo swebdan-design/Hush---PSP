@@ -45,6 +45,12 @@ typedef struct { V3 p; float size; uint32_t color; uint8_t kind, blink; float ph
 typedef struct { V3 p; float w, h; uint8_t axis; int8_t facing; uint8_t ad; uint8_t flicker; uint8_t sheet; } Ad;
 typedef struct { float x0, z0, x1, z1; } Block;
 typedef struct { V3 a, b; uint32_t color; uint8_t flicker; } Neon;
+/* hidden transmission for signal hunting: global id = district * SIGNALS_PER_DISTRICT + k */
+#define SIGNALS_PER_DISTRICT 8
+#define SIGNAL_TOTAL (SIGNALS_PER_DISTRICT * 4)
+enum { SIG_STREET = 0, SIG_ROOFTOP, SIG_HIGH, SIG_WATER };
+typedef struct { V3 p; uint8_t id, kind; } Signal;
+#define MAX_STEAMS 24
 
 typedef struct { V3 pts[LANE_PTS]; int n; float speed, len; uint8_t kind, loop, count; float seglen[LANE_PTS]; } Lane;
 
@@ -71,6 +77,8 @@ typedef struct {
     Block blocks[MAX_BLOCKS]; int n_blocks;   /* city blocks with sidewalks (pedestrian paths) */
     Neon neon[MAX_NEON]; int n_neon;
     float pitch;                               /* street grid spacing */
+    Signal signals[SIGNALS_PER_DISTRICT]; int n_signals;
+    V3 steams[MAX_STEAMS]; int n_steams;       /* harmless street steam (manholes) */
 
     /* collision grid: per cell list of box indices (cyls are tested directly) */
     uint16_t cell_start[GRID_N * GRID_N + 1];

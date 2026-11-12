@@ -16,5 +16,11 @@ extern const char *const story_log[12];
 int story_act(uint32_t missions_done);
 /* a line a pedestrian might say, chosen from the act's pool plus the city's everyday satire */
 const char *story_chatter(int act, uint32_t pick);
+/* what people say when the Moth hovers over them */
+const char *story_reaction(uint32_t pick);
+/* the 32 hidden transmissions (signal hunting), indexed by global signal id */
+extern const char *const story_intercept[32];
+/* radio lines from municipal patrol craft that notice you */
+const char *story_patrol(uint32_t pick);
 
 #endif

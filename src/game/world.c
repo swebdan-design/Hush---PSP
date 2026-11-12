@@ -728,6 +728,71 @@ static void add_city_billboards(World *w) {
     }
 }
 
+/* A point is a fair hiding place if a craft fits there and it can be reached straight down from the sky. */
+static int signal_ok(const World *w, V3 p) {
+    V3 q = p;
+    if (world_collide_sphere(w, &q, 4.0f, NULL)) return 0;
+    if (world_raycast(w, v3(p.x, WORLD_CEILING - 12.0f, p.z), p) < 0.999f) return 0;
+    for (int i = 0; i < w->n_signals; i++) if (v3_dist_xz(w->signals[i].p, p) < 110.0f) return 0;
+    for (int i = 0; i < w->n_pois; i++) if (w->pois[i].kind == POI_PAD && v3_dist_xz(w->pois[i].p, p) < 60.0f) return 0;
+    return 1;
+}
+
+/* Eight hidden transmissions per district, in four kinds of hiding place, and a few steaming manholes. */
+static void add_signals(World *w) {
+    Rng r;
+    rng_seed(&r, w->gen_seed ^ 0x516A7u, 0x5161u);
+    int k = 0;
+    for (int attempt = 0; attempt < 600 && k < SIGNALS_PER_DISTRICT; attempt++) {
+        int kind = k % 4;
+        if (w->id == DISTRICT_UNDERTOW && kind == SIG_STREET) kind = SIG_WATER;
+        V3 p = v3(0, 0, 0);
+        int have = 0;
+        if (kind == SIG_STREET && w->n_blocks > 0) {
+            int bi = rng_int(&r, w->n_blocks);
+            const Block *bl = &w->blocks[bi];
+            float street = w->pitch - (bl->x1 - bl->x0);
+            float t = rng_float(&r);
+            p = v3(bl->x1 + street * 0.5f, w->ground_y + 5.0f, bl->z0 + (bl->z1 - bl->z0) * t);
+            have = 1;
+        } else if (kind == SIG_ROOFTOP || kind == SIG_HIGH) {
+            int bi = rng_int(&r, w->n_boxes);
+            const Box *b = &w->boxes[bi];
+            float h = b->b.y1 - b->b.y0;
+            if ((b->kind == BOX_BUILDING || b->kind == BOX_TIER) && h > (kind == SIG_HIGH ? w->skyline * 0.6f : 25.0f)) {
+                if (kind == SIG_ROOFTOP) p = v3((b->b.x0 + b->b.x1) * 0.5f + 3.0f, b->b.y1 + 4.0f, (b->b.z0 + b->b.z1) * 0.5f);
+                else {
+                    int side = rng_int(&r, 4);
+                    float off = 14.0f;
+                    float y = b->b.y0 + h * (0.55f + 0.3f * rng_float(&r));
+                    p = side == 0 ? v3(b->b.x1 + off, y, (b->b.z0 + b->b.z1) * 0.5f) : side == 1 ? v3(b->b.x0 - off, y, (b->b.z0 + b->b.z1) * 0.5f)
+                      : side == 2 ? v3((b->b.x0 + b->b.x1) * 0.5f, y, b->b.z1 + off) : v3((b->b.x0 + b->b.x1) * 0.5f, y, b->b.z0 - off);
+                }
+                have = 1;
+            }
+        } else {
+            float x = (rng_float(&r) - 0.5f) * 1000.0f, z = (rng_float(&r) - 0.5f) * 1000.0f;
+            float floor_y = w->water_y > w->ground_y ? w->water_y : w->ground_y;
+            p = v3(x, floor_y + 5.0f, z);
+            have = 1;
+        }
+        if (!have || h_absf(p.x) > WORLD_HALF - 40.0f || h_absf(p.z) > WORLD_HALF - 40.0f || !signal_ok(w, p)) continue;
+        Signal *sg = &w->signals[w->n_signals++];
+        sg->p = p; sg->kind = (uint8_t)kind; sg->id = (uint8_t)(w->id * SIGNALS_PER_DISTRICT + k);
+        k++;
+    }
+    /* steaming manholes at street intersections */
+    if (w->id != DISTRICT_UNDERTOW && w->pitch > 0) {
+        for (int i = 0; i < 80 && w->n_steams < MAX_STEAMS; i++) {
+            int gx = rng_range(&r, -5, 5), gz = rng_range(&r, -5, 5);
+            V3 p = v3((float)gx * w->pitch + 3.0f, w->ground_y + 0.2f, (float)gz * w->pitch - 4.0f);
+            V3 q = v3(p.x, p.y + 2.0f, p.z);
+            if (world_collide_sphere(w, &q, 1.0f, NULL)) continue;
+            w->steams[w->n_steams++] = p;
+        }
+    }
+}
+
 void world_generate(World *w, int district) {
     memset(w, 0, sizeof(*w));
     g_nres = 0;
@@ -755,6 +820,7 @@ void world_generate(World *w, int district) {
     build_grid(w);
     add_city_billboards(w);
     add_street_lanes(w);
+    add_signals(w);
 }
 
 const Poi *world_poi(const World *w, const char *name) {

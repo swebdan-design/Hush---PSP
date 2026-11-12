@@ -9,7 +9,7 @@
 | △ Triangle (hold) | Ascend |
 | ✕ Cross (hold) | Descend — all the way down to street level |
 | □ Square (hold) | Boost — while moving forward; the gauge drains and recharges |
-| ○ Circle | Hold: scanner (objectives, sonic landmarks). Press: EMP / context action |
+| ○ Circle | Hold: scanner (objectives, sonic landmarks, hidden transmissions). Press: EMP / context action |
 | D-pad Down (hold) | Brake and stabilise |
 | D-pad Up | Cycle the HUD: full → minimal → off |
 | D-pad Left / Right | Tilt the camera |

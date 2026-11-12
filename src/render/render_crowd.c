@@ -90,6 +90,15 @@ void rw_draw_crowd(const Crowd *cr, const Atmos *a, float time) {
             k += emit_box(&v[k], p->pos, p->yaw, v3(0, 0.75f, 0), v3(0.2f, 0.75f, 0.12f), 0, 0, coat);
             k += emit_box(&v[k], p->pos, p->yaw, v3(0, 1.6f, 0), v3(0.1f, 0.11f, 0.1f), 0, 0, head);
         }
+        if (p->photo > 0.0f) {
+            /* a phone held up at the Moth: a bright flash at arm's length */
+            float cs = cosf(p->yaw), sn = sinf(p->yaw);
+            rw_light(v3(p->pos.x + sn * 0.35f, p->pos.y + 1.75f, p->pos.z + cs * 0.35f), 1.1f, RGBA(240, 245, 255, 255), h_clampf(p->photo * 9.0f, 0.0f, 1.0f));
+        } else if (p->watch > 0.6f && (p->style & 1) && is_near) {
+            /* a lit screen while filming */
+            float cs = cosf(p->yaw), sn = sinf(p->yaw);
+            rw_light(v3(p->pos.x + sn * 0.3f, p->pos.y + 1.55f, p->pos.z + cs * 0.3f), 0.22f, RGBA(170, 210, 255, 255), 0.7f);
+        }
         if (p->umbrella) {
             V3 top = v3(p->pos.x, p->pos.y + 2.0f, p->pos.z);
             k += emit_umbrella(&v[k], top, 0.55f, p->umb);

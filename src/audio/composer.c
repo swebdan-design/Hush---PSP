@@ -500,9 +500,20 @@ static void bar_tick(HushMusic *m) {
             float lmp = 0; int lm = -1;
             for (int l = 0; l < LM_COUNT; l++) if (c->s_landmark[l] > lmp) { lmp = c->s_landmark[l]; lm = l; }
             float p = c->s_melody * 0.45f * c->energy[LAYER_FRAG] + 0.5f * lmp;
-            if (c->punct_type == MEV_DISCOVERY || c->punct_type == MEV_SIGNAL_LOCK) p = 1.0f;
+            if (c->punct_type == MEV_DISCOVERY || c->punct_type == MEV_SIGNAL_LOCK || c->punct_type == MEV_TRANSMISSION) p = 1.0f;
             if (rng_chance(&c->r_frag, p)) {
-                if ((lm >= 0 && lmp > 0.25f && rng_chance(&c->r_frag, 0.35f + 0.6f * lmp)) || (c->punct_type == MEV_DISCOVERY && c->punct_arg >= 0 && c->punct_arg < LM_COUNT)) {
+                uint32_t col = m->collected;
+                if (c->punct_type == MEV_TRANSMISSION && c->punct_arg >= 0 && c->punct_arg < 32) {
+                    /* a transmission just captured: play its motif now */
+                    signal_motif(c->punct_arg, &c->phrase);
+                    c->stats.motif_recall++;
+                } else if (col && rng_chance(&c->r_frag, 0.22f)) {
+                    /* a collected transmission returns, woven into the composition */
+                    int cnt = __builtin_popcount(col), pick = rng_int(&c->r_frag, cnt), id = 0;
+                    for (int b = 0; b < 32; b++) if ((col >> b) & 1) { if (pick-- == 0) { id = b; break; } }
+                    signal_motif(id, &c->phrase);
+                    c->stats.motif_recall++;
+                } else if ((lm >= 0 && lmp > 0.25f && rng_chance(&c->r_frag, 0.35f + 0.6f * lmp)) || (c->punct_type == MEV_DISCOVERY && c->punct_arg >= 0 && c->punct_arg < LM_COUNT)) {
                     int which = c->punct_type == MEV_DISCOVERY ? c->punct_arg : lm;
                     c->phrase = *landmark_motif(which);
                     if (which == LM_ARCHIVE) c->archive_reps++;
@@ -524,7 +535,7 @@ static void bar_tick(HushMusic *m) {
                     }
                     if (c->punct_type == MEV_SIGNAL_LOCK) c->phrase.inst = FI_RADIO;
                 }
-                if (c->punct_type == MEV_DISCOVERY || c->punct_type == MEV_SIGNAL_LOCK) c->punct_type = 0;
+                if (c->punct_type == MEV_DISCOVERY || c->punct_type == MEV_SIGNAL_LOCK || c->punct_type == MEV_TRANSMISSION) c->punct_type = 0;
                 c->phrase_active = 1;
                 c->phrase_note = 0;
                 c->phrase_step_left = rng_int(&c->r_frag, 3) * 2;

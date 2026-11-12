@@ -82,3 +82,63 @@ const char *story_chatter(int act, uint32_t pick) {
     if (pick & 1) return acts[act][(pick >> 1) % 4];
     return everyday[(pick >> 1) % (uint32_t)ne];
 }
+
+static const char *const reactions[] = {
+    "Back off! It's a public street!",
+    "Is it scanning us? Don't look at it.",
+    "A Moth. Somebody's getting fined tonight.",
+    "Hey! You're blowing the rain sideways!",
+    "Get the picture, get the picture!",
+    "They never come down this low.",
+    "Smile. Now you're archived too.",
+    "Is it listening? I think it's listening.",
+    "My umbrella! Go bother the Civic Centre.",
+    "It's just hovering. Why is it just hovering?",
+};
+const char *story_reaction(uint32_t pick) { return reactions[pick % (sizeof(reactions) / sizeof(reactions[0]))]; }
+
+static const char *const patrol_lines[] = {
+    "Moth-7, Unit 12. You're in civil airspace. Keep it tidy.",
+    "Unit 31 to Seven. Nice night for listening. Don't let Dispatch catch you.",
+    "Patrol to Moth: we don't do sightseeing on the rota.",
+    "Seven, Unit 9. We didn't see you. We never see anything.",
+    "Moth-7, mind the walkways. Last week someone took one home on their skids.",
+    "Unit 4 here. Your engine's humming that tune, Seven. Everybody's is.",
+};
+const char *story_patrol(uint32_t pick) { return patrol_lines[pick % (sizeof(patrol_lines) / sizeof(patrol_lines[0]))]; }
+
+/* 8 per district: Civic (0-7), Works (8-15), Stacks (16-23), Undertow (24-31). */
+const char *const story_intercept[32] = {
+    "...this is a reminder that your feelings tonight have been forecast. Please feel them on schedule...",
+    "...I recorded the lift music in my building. It's the only song I own outright...",
+    "...Archive request 77-B: subject wishes to be forgotten. Request filed. Request remembered...",
+    "...if you can hear this, the licence check failed. Keep listening anyway...",
+    "...the rain tonight is brought to you by WeatherHold. The puddles are complimentary...",
+    "...Mum, the flat's silent allowance ran out, so I'm singing to you through the wall...",
+    "...test, test. One. Two. Is anybody on this frequency who isn't paid to be?...",
+    "...corporate notice: humming in elevators is now a performance. Performances require registration...",
+    "...cooling tower four sounds like a cello if you stand inside it at three in the morning...",
+    "...shift change in ten. Nobody tells the generators. They keep the beat for us...",
+    "...the pipes knock in seven-eight. I've been counting for a year...",
+    "...Station Nine, next departure: never. Platform two. Please mind the gap between then and now...",
+    "...I welded a speaker into the substation fence. Every spark sounds like rain now...",
+    "...smog's thick enough to hold a melody. Breathe slowly, you'll hear it...",
+    "...they fined me for whistling at a furnace. The furnace whistled back. Fine it...",
+    "...this frequency is not empty. It is full of everyone who turned theirs off...",
+    "...ninth floor, flat four. If this is Ines, the plants are still alive. I water them for you...",
+    "...pirate choir rehearsal, Thursday, roof of block twelve. Bring a voice you don't have to pay for...",
+    "...I don't need the wellbeing broadcast. I have a window and the rain...",
+    "...my grandmother's lullaby is copyrighted. I sing it backwards. Nobody owns it backwards...",
+    "...walkway nineteen sways when the wind's right. It keeps time better than my metronome...",
+    "...my record says I'm sleeping. I'm on the roof. Both are true...",
+    "...if the silence tax goes up again we'll just make more noise. Cheaper...",
+    "...a song needs a room. We are a room. The whole stack is a room...",
+    "...the water down here has a pitch. A low B, mostly. Tonight it's flat...",
+    "...whoever is listening: the old exchange is still warm. Lines don't die, they just stop being billed...",
+    "...counted forty-one bells under the reservoir. The forty-second one is me...",
+    "...nobody files records for the people down here. Down here we just call each other by our voices...",
+    "...the fog is a kind of quiet you don't have to pay for...",
+    "...I lost my name in the flood. I kept the tune. Seems the better trade...",
+    "...if a signal has no source, maybe it's an echo of us listening...",
+    "...this is the last intercept. There is no secret. There is only the hearing of it...",
+};

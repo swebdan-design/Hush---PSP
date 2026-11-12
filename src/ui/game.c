@@ -44,6 +44,69 @@ static void handle_mission_events(App *a) {
     }
 }
 
+/* ---- the city notices the Moth ---- */
+static void city_reacts(App *a, const MissionInput *mi, float dt) {
+    Craft *c = &a->craft;
+    float alt = c->pos.y - a->world.ground_y;
+    /* horns from cars the Moth is blocking, panned to where they are */
+    if (a->traffic.horns > 0) {
+        V3 d = v3_sub(a->traffic.horn_pos, c->pos);
+        float l = v3_len(d);
+        if (l < 90.0f) {
+            a->sfx.horn_pan = l > 0.1f ? -v3_dot(d, craft_right(c)) / l : 0.0f;
+            sfx_play(&a->sfx, SFX_HORN);
+        }
+        a->traffic.horns = 0;
+    }
+    /* patrols chatter about an unregistered craft when they pass close */
+    if (a->patrol_cool > 0) a->patrol_cool -= dt;
+    if (a->traffic.patrol_near >= 0 && a->patrol_cool <= 0 && a->tx_n == 0) {
+        app_tx("VPD BAND", story_patrol(a->patrol_n++ * 2654435761u + (uint32_t)a->world.id));
+        sfx_play(&a->sfx, SFX_TRANSMISSION);
+        a->patrol_cool = 45.0f;
+    }
+    /* a gathering crowd: murmur in the mix, and now and then a line overheard about the Moth itself */
+    float low = 1.0f - h_smoothstep(25.0f, 60.0f, alt);
+    a->sfx.crowd = h_clampf((float)(a->crowd.watchers + 2 * a->crowd.fleeing) / 14.0f, 0.0f, 1.0f) * low;
+    if (a->react_cool > 0) a->react_cool -= dt;
+    if ((a->crowd.watchers >= 4 || a->crowd.fleeing >= 3) && a->react_cool <= 0 && a->chatter_t <= 0 && alt < 45.0f) {
+        a->chatter = story_reaction(a->react_n++ * 2246822519u + (uint32_t)a->crowd.fleeing);
+        a->chatter_t = 6.0f;
+        a->chatter_cool = 9.0f;
+        a->react_cool = 24.0f;
+    }
+    /* local brownouts: a held scanner low over the street overloads a junction; the grid sags on its own too */
+    if (mi->scan_held && alt < 40.0f) a->scan_acc += dt; else a->scan_acc = h_maxf(0.0f, a->scan_acc - dt * 0.5f);
+    if (a->brown_t > 0) a->brown_t -= dt;
+    else {
+        a->brown_next -= dt;
+        if (a->scan_acc > 5.0f) {
+            a->brown_p = c->pos; a->brown_t = 6.0f; a->scan_acc = 0; a->brown_next = h_maxf(a->brown_next, 20.0f);
+            app_note("GRID INTERFERENCE");
+        } else if (a->brown_next <= 0 && alt < 120.0f) {
+            V3 f = craft_forward(c);
+            a->brown_p = v3_madd(c->pos, f, 70.0f + 40.0f * (float)(a->react_n & 1));
+            a->brown_p.y = a->world.ground_y + 10.0f;
+            a->brown_t = 6.0f;
+            a->brown_next = 50.0f + 40.0f * (float)((a->patrol_n + a->react_n) % 3) * 0.5f;
+        }
+    }
+    /* signal hunting: the scanner's ping guides you; hold scan close by to capture */
+    hunt_update(&a->hunt, &a->world, c, a->prog.signals_found, mi->scan_held, dt);
+    if (a->hunt.ping && a->scan_t <= 0) sfx_play(&a->sfx, SFX_PING);
+    if (a->hunt.found >= 0) {
+        int id = a->hunt.found;
+        a->prog.signals_found |= 1u << id;
+        hush_music_set_collected(a->music, a->prog.signals_found);
+        hush_music_event(a->music, MEV_TRANSMISSION, id);
+        sfx_play(&a->sfx, SFX_CAPTURE);
+        a->sig_flash_id = id; a->sig_flash_t = 4.0f;
+        app_tx("INTERCEPT", story_intercept[id]);
+        app_save();
+    }
+    if (a->sig_flash_t > 0) a->sig_flash_t -= dt;
+}
+
 void game_update(float dt, int controls) {
     App *a = &g_app;
     FlightInput fi;
@@ -106,9 +169,11 @@ void game_update(float dt, int controls) {
         }
     }
     if (a->mode != MODE_PATROL && a->craft.hull < a->craft.hull_max) a->craft.hull = h_minf(a->craft.hull_max, a->craft.hull + 4.0f * dt); /* drift: self-repair */
-    traffic_update(&a->traffic, &a->world, dt);
+    traffic_update(&a->traffic, &a->world, dt, a->craft.pos);
     crowd_update(&a->crowd, &a->world, a->craft.pos, a->wx.rain, dt);
     weather_update(&a->wx, dt);
+    if (a->mode != MODE_ATTRACT) city_reacts(a, &mi, dt);
+    else { a->traffic.horns = 0; a->sfx.crowd = 0; }
 
     if (a->mode == MODE_PATROL) {
         mission_update(&a->mission, &a->world, &a->traffic, &a->craft, &mi, dt);
@@ -186,6 +251,33 @@ static void draw_marker_3d(App *a) {
     rw_light(v3_add(p, v3(0, 24, 0)), 1.5f, RGBA(90, 230, 255, 255), pulse * 0.4f);
 }
 
+/* uncaptured transmissions leak a faint, unsteady shimmer into the air nearby; scanning makes it brighter */
+static void draw_signal_shimmer(App *a) {
+    if (a->mode == MODE_ATTRACT) return;
+    for (int i = 0; i < a->world.n_signals; i++) {
+        const Signal *s = &a->world.signals[i];
+        if ((a->prog.signals_found >> s->id) & 1) continue;
+        float d = v3_dist(s->p, a->craft.pos);
+        if (d > 70.0f) continue;
+        float t = a->time * 7.0f + (float)s->id * 1.37f;
+        float g = sinf(t) * sinf(t * 0.43f + 1.0f);
+        float al = (g > 0.55f ? 0.55f : 0.08f) * (a->scanning ? 1.6f : 1.0f) * (1.0f - d / 70.0f);
+        uint32_t col = (s->id & 1) ? RGBA(120, 255, 230, 255) : RGBA(255, 110, 220, 255);
+        V3 j = v3(sinf(t * 1.9f) * 1.5f, sinf(t * 1.1f) * 1.0f, cosf(t * 1.7f) * 1.5f);
+        rw_light(v3_add(s->p, j), 0.9f, col, al);
+        rw_light(v3_sub(s->p, j), 0.5f, RGBA(230, 240, 255, 255), al * 0.6f);
+    }
+    /* a captured signal collapses into a column of light */
+    if (a->sig_flash_t > 0) {
+        for (int i = 0; i < a->world.n_signals; i++) {
+            if (a->world.signals[i].id != a->sig_flash_id) continue;
+            float k = a->sig_flash_t / 4.0f;
+            for (int h = 0; h < 6; h++)
+                rw_light(v3_add(a->world.signals[i].p, v3(0, (float)h * 6.0f * (1.0f - k) * 2.0f, 0)), 2.5f - (float)h * 0.3f, RGBA(150, 255, 235, 255), k);
+        }
+    }
+}
+
 static void draw_scan_beam(App *a) {
     if (!a->scanning || a->cam.mode == CAM_COCKPIT) return;
     V3 nose = moth_nose(&a->craft);
@@ -214,12 +306,14 @@ void game_render(int with_hud) {
     Camera *cam = &a->cam;
     rw_draw_sky(&a->world, &a->atmos, cam->eye, cam->target, cam->up, cam->fov);
     gfx_set_camera(cam->eye, cam->target, cam->up, cam->fov, 1.5f, a->atmos.fog_far + 80.0f);
+    rw_set_focus(a->craft.pos, a->scanning, a->brown_p, a->mode == MODE_ATTRACT ? 0.0f : h_clampf(a->brown_t, 0.0f, 1.0f), 1.0f / 30.0f);
     rw_draw_world(&a->world, &a->atmos, a->time);
     rw_draw_traffic(&a->world, &a->traffic, &a->atmos, a->time);
     rw_draw_crowd(&a->crowd, &a->atmos, a->time);
     moth_draw(&a->craft, a->time, a->prog.paint, cam->mode != CAM_COCKPIT, a->atmos.fog_near, a->atmos.fog_far, a->atmos.fog_color);
     rw_draw_world_lights(&a->world, &a->atmos, a->time, a->wx.rain);
     draw_marker_3d(a);
+    draw_signal_shimmer(a);
     rw_flush_lights(&a->world, &a->atmos);
     rw_draw_effects(&a->world, &a->wx, &a->atmos, a->time, 1.0f / 30.0f, a->prog.rain_density);
     draw_scan_beam(a);

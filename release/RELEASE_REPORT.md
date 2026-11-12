@@ -1,10 +1,10 @@
 # HUSH release report
 
-- Date: 2026-11-12T09:04Z
-- Source commit: df42f38 (working tree had uncommitted changes)
+- Date: 2026-11-12T09:41Z
+- Source commit: 438f8d6 (working tree had uncommitted changes)
 - Toolchain: psp-gcc (GCC) 15.2.0
-- EBOOT.PBP: 1217061 bytes
-- Host tests: 131 checks passed, 0 failed
+- EBOOT.PBP: 1240309 bytes
+- Host tests: 187 checks passed, 0 failed
 
 ## Contents
 ```
@@ -38,6 +38,10 @@
   HUSH_by_Synth_Centric/artwork/screenshots/HUSH_17_operator_log.png
   HUSH_by_Synth_Centric/artwork/screenshots/HUSH_18_prologue.png
   HUSH_by_Synth_Centric/artwork/screenshots/HUSH_19_case_file.png
+  HUSH_by_Synth_Centric/artwork/screenshots/HUSH_20_street_watchers.png
+  HUSH_by_Synth_Centric/artwork/screenshots/HUSH_21_signal_trace.png
+  HUSH_by_Synth_Centric/artwork/screenshots/HUSH_22_signal_captured.png
+  HUSH_by_Synth_Centric/artwork/screenshots/HUSH_23_casefile_intercepts.png
   HUSH_by_Synth_Centric/audio/01_Civic_Centre.log
   HUSH_by_Synth_Centric/audio/02_The_Works.log
   HUSH_by_Synth_Centric/audio/03_The_Stacks.log
@@ -59,15 +63,15 @@
 
 ## Archive sizes
 ```
-445249454 HUSH_Release_Package.zip
-42505732 HUSH_Source.zip
+445715450 HUSH_Release_Package.zip
+42519298 HUSH_Source.zip
 ```
 
 ## SHA-256
 ```
-b9ae996186f40d32dce25e665c59fc4edf8cbf7b4cfb1ab7c50c666caafe7902  HUSH_Release_Package.zip
-4a91a9ebe389e0ff10b230a6f7b50c068855041d9a1c3376d2c7af82f0bef835  HUSH_Source.zip
-526ffe1eeec84dd7cf7adc4efb66030d3a9b9b7c2f2691f5ab8b50fd2f375d7c  HUSH_by_Synth_Centric/PSP/GAME/HUSH/EBOOT.PBP
+83c3f285333019430f20d0433c70bf77a43b955afc4f6ad3b62c7c2b513ca8e2  HUSH_Release_Package.zip
+7b0304ec650d0c9eb3eb7b9d4b9f6d6daba1633140777fd6d4386fcc23dcfa1c  HUSH_Source.zip
+6affa89c26078accfd1fb98a812c3d157a9e5f3bec644bbf3c9b07e70c5f8397  HUSH_by_Synth_Centric/PSP/GAME/HUSH/EBOOT.PBP
 52567d6750f4435b29ed71583f850f10e92278cdf0efa5914a30f5410a217068  HUSH_by_Synth_Centric/audio/HUSH_01_Civic_Centre.wav
 27d5285ff6b1df2d468c24a403e81d832f6a27110ffefbb5cafcfa332b620e1b  HUSH_by_Synth_Centric/audio/HUSH_02_The_Works.wav
 bed71facdf9499c62ccd3abc5006878dbd07acd6324285cd3da4e4168f988047  HUSH_by_Synth_Centric/audio/HUSH_03_The_Stacks.wav

@@ -15,16 +15,23 @@ typedef struct {
     float yaw;
     float fall_vel;              /* disabled drones fall */
     uint32_t color;
+    float avoid_y;               /* vertical swerve away from the Moth */
+    float blocked;               /* seconds held up by the Moth */
+    float horn_cd;
 } Vehicle;
 
 typedef struct {
     Vehicle v[MAX_VEH];
     int n;
     float time;
+    int horns;                   /* horn blasts since last read (the game plays and clears them) */
+    int patrol_near;             /* index of a patrol craft within hailing range, -1 none */
+    V3 horn_pos;
 } Traffic;
 
 void traffic_init(Traffic *t, const World *w);
-void traffic_update(Traffic *t, const World *w, float dt);
+/* craft: the Moth's position (vehicles queue, brake, honk and steer around it) */
+void traffic_update(Traffic *t, const World *w, float dt, V3 craft);
 /* Adds a vehicle under mission control. Returns index or -1. */
 int traffic_spawn(Traffic *t, const World *w, int lane, float s, float speed, int kind);
 /* Normalised density of vehicles within radius r (0..1). */

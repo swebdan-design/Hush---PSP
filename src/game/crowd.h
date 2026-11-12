@@ -17,6 +17,8 @@ typedef struct {
     float yaw;
     uint32_t coat, umb;
     int16_t chatter;            /* index into the overheard-line pool, -1 none */
+    float watch;                /* 0..1 curiosity: stops and looks up at the Moth */
+    float photo;                /* >0 while a phone camera flash is lit */
 } Ped;
 
 typedef struct {
@@ -24,6 +26,7 @@ typedef struct {
     int n;
     uint32_t rng;
     uint32_t tick;
+    int watchers, fleeing;      /* this frame: how the street is reacting to the Moth */
 } Crowd;
 
 void crowd_init(Crowd *c, const World *w);

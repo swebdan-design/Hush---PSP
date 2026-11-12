@@ -217,6 +217,29 @@ static const Motif lm_motifs[LM_COUNT] = {
 };
 const Motif *landmark_motif(int lm) { return (lm >= 0 && lm < LM_COUNT) ? &lm_motifs[lm] : 0; }
 
+void signal_motif(int id, Motif *mo) {
+    /* seeded by the id alone, so a transmission sounds the same in every composition */
+    Rng r;
+    rng_seed(&r, 0x5167A1u, (uint32_t)id + 1u);
+    memset(mo, 0, sizeof(*mo));
+    mo->n = (uint8_t)rng_range(&r, 4, 6);
+    static const int8_t steps[6] = {-2, -1, 1, 2, 3, -3};
+    static const float sw[6] = {1.0f, 3.0f, 3.0f, 1.5f, 0.6f, 0.6f};
+    static const uint8_t durs[5] = {2, 3, 4, 4, 6};
+    int d = rng_range(&r, 0, 6);
+    for (int i = 0; i < mo->n; i++) {
+        mo->deg[i] = (int8_t)d;
+        mo->dur[i] = durs[rng_int(&r, 5)];
+        mo->vel[i] = (uint8_t)rng_range(&r, 65, 100);
+        d += steps[rng_weighted(&r, sw, 6)];
+        if (d > 11) d -= 4;
+        if (d < -2) d += 4;
+    }
+    mo->dur[mo->n - 1] = (uint8_t)(mo->dur[mo->n - 1] + 6);
+    static const uint8_t inst[4] = { FI_RADIO, FI_GLASS, FI_BELL, FI_VOX };
+    mo->inst = inst[id % 4];
+}
+
 /* ---------------- Presets ---------------- */
 static void preset_base(MusicParams *p) {
     memset(p, 0, sizeof(*p));

@@ -64,7 +64,9 @@ Emulator: PPSSPPHeadless built from hrydgard/ppsspp (needs SDL3 + SDL3_ttf built
 Implemented and validated in PPSSPP: all modes, 4 districts, 12 missions (all completed by the autopilot
 in the PSP build), saves, Signal Console, 5 sonic landmarks, weather, traffic, 3 cameras, street level
 (shopfronts, neon, street traffic, pedestrians), story layer (prologue, operator's log, case file, chatter),
-face-button (default) and classic control schemes.
+face-button (default) and classic control schemes, signal hunting (32 hidden transmissions; `src/game/signals.c`; collected
+motifs recur in the music) and city reactions to the Moth (crowd watch/flee/film, cars stop+honk, flying traffic swerves,
+patrol radio, billboard retargeting, brownouts, downwash spray; `game.c city_reacts`, `rw_set_focus`).
 First real-hardware report (PSP-3000): missing ground/railway (guard band), windows on roofs (texture bug),
 choppiness (load) - all addressed; awaiting re-test. PDF manual depends on Chromium being present.
 

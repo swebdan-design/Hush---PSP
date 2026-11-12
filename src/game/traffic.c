@@ -56,8 +56,9 @@ int traffic_find_lane(const World *w, int kind) {
     return -1;
 }
 
-void traffic_update(Traffic *t, const World *w, float dt) {
+void traffic_update(Traffic *t, const World *w, float dt, V3 craft) {
     t->time += dt;
+    t->patrol_near = -1;
     for (int i = 0; i < t->n; i++) {
         Vehicle *v = &t->v[i];
         if (!v->active) continue;
@@ -69,11 +70,45 @@ void traffic_update(Traffic *t, const World *w, float dt) {
             if (v->pos.y < fy) { v->pos.y = fy; v->fall_vel = 0; }
             continue;
         }
-        v->s += v->speed * dt;
         const Lane *l = &w->lanes[v->lane];
+        if (!v->mission) {
+            float target = v->base_speed;
+            if (v->kind == VK_GROUND) {
+                /* follow the car ahead in the same lane */
+                for (int j = 0; j < t->n; j++) {
+                    const Vehicle *o = &t->v[j];
+                    if (j == i || !o->active || o->lane != v->lane || o->off_x != v->off_x) continue;
+                    float gap = o->s - v->s;
+                    if (l->loop) { if (gap < 0) gap += l->len; }
+                    if (gap > 0 && gap < 16.0f) target = h_minf(target, o->speed * h_clampf((gap - 6.0f) / 10.0f, 0.0f, 1.0f));
+                }
+                /* a Moth hovering in the lane ahead: stop, wait, lean on the horn */
+                V3 rel = v3_sub(craft, v->pos);
+                float ahead = v3_dot(rel, v->dir);
+                float lateral = h_absf(v3_dot(rel, v3(v->dir.z, 0, -v->dir.x)));
+                if (ahead > 0.0f && ahead < 22.0f && lateral < 6.0f && craft.y - v->pos.y < 7.0f) {
+                    target = 0.0f;
+                    v->blocked += dt;
+                    v->horn_cd -= dt;
+                    if (v->blocked > 1.2f && v->horn_cd <= 0.0f) { t->horns++; t->horn_pos = v->pos; v->horn_cd = 2.5f + (float)(i % 3); }
+                } else { v->blocked = 0; v->horn_cd = 0; }
+            }
+            /* accelerate gently, brake firmly */
+            float a = target < v->speed ? 9.0f : 4.0f;
+            v->speed += h_clampf(target - v->speed, -a * dt, a * dt);
+        }
+        v->s += v->speed * dt;
         if (!l->loop && v->s > l->len) v->s = l->len;
         place(v, w);
-        if (!v->mission && v->kind != VK_GROUND) v->pos.y += sinf(t->time * 0.7f + (float)i) * 0.4f;
+        if (!v->mission && v->kind != VK_GROUND) {
+            /* flying traffic swerves above or below a Moth in its path */
+            float d = v3_dist(v->pos, craft);
+            float want = 0;
+            if (d < 30.0f) want = (v->pos.y >= craft.y ? 1.0f : -1.0f) * (30.0f - d) * 0.45f;
+            v->avoid_y = h_approach(v->avoid_y, want, 2.5f, dt);
+            v->pos.y += sinf(t->time * 0.7f + (float)i) * 0.4f + v->avoid_y;
+            if (v->kind == VK_PATROL && d < 70.0f) t->patrol_near = i;
+        }
     }
 }
 

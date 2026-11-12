@@ -195,7 +195,8 @@ struct HushMusic {
     float rev_size_applied, rev_decay_applied, rev_damp_applied;
     int rev_update_ctr;
 
-    volatile int economy;             /* set by the platform when the audio CPU budget is tight */
+    volatile int economy;
+    volatile uint32_t collected;      /* collected transmission motifs */             /* set by the platform when the audio CPU budget is tight */
     MusicViz viz;
     float rms_accL, rms_accR;
     int rms_n;
@@ -214,6 +215,8 @@ void patch_frag(Patch *p, const Composer *c, int inst);
 void patch_texture(Patch *p, const Composer *c, int which);
 void patch_sub(Patch *p, const Composer *c);
 const Motif *landmark_motif(int lm);
+/* the fixed motif of hidden transmission id (0..31): recognisable wherever it recurs */
+void signal_motif(int id, Motif *out);
 
 /* composer.c */
 void composer_init(HushMusic *m, uint32_t seed);

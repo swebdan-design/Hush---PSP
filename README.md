@@ -36,6 +36,9 @@ composed and synthesised as you fly.
   the Black Reservoir and the Silent Exchange.
 - 12 missions with real objectives (goto, scan, locate by signal strength, follow, pursue + EMP, collect, timed rings,
   landmark investigation, docking, listening), failure/retry, rewards and progression.
+- **Signal hunting**: 32 hidden transmissions found only by ear and a trace meter; each captured motif joins the music.
+- **A city that notices you**: pedestrians stop and film the Moth or scatter from its downwash, cars stop and honk, flying
+  traffic swerves, patrols talk about you on the police band, billboards retarget, the grid browns out under a held scanner.
 - Saves with CRC validation and backup; options; full menus; credits.
 - **hush-render**: a desktop renderer that uses the same engine code to render WAV files.
 

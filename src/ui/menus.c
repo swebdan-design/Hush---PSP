@@ -37,6 +37,7 @@ float ui_glyph(float x, float y, char b, float alpha) {
     case 'T': { float p[6] = { cx, cy - 4, cx + 4, cy + 3, cx - 4, cy + 3 }; gfx_lines(p, 3, col_alpha(RGBA(120, 230, 180, 255), alpha), 1); break; }
     case 'u': gfx_tri(cx, cy - 4, cx + 4, cy + 2, cx - 4, cy + 2, col_alpha(C_TXT, alpha)); break;
     case 'd': gfx_tri(cx - 4, cy - 2, cx + 4, cy - 2, cx, cy + 4, col_alpha(C_TXT, alpha)); break;
+    case 'h': gfx_tri(cx - 6, cy, cx - 1, cy - 4, cx - 1, cy + 4, col_alpha(C_TXT, alpha)); gfx_tri(cx + 6, cy, cx + 1, cy + 4, cx + 1, cy - 4, col_alpha(C_TXT, alpha)); break;
     case 'L': case 'R': { char t[2] = { b, 0 }; return gfx_text(FONT_SMALL, x, y, t, col_alpha(C_TXT, alpha), ALIGN_LEFT) + 2; }
     case 's': return gfx_text(FONT_SMALL, x, y, "START", col_alpha(C_TXT, alpha), ALIGN_LEFT) + 2;
     case 'e': return gfx_text(FONT_SMALL, x, y, "SELECT", col_alpha(C_TXT, alpha), ALIGN_LEFT) + 2;
@@ -184,7 +185,7 @@ static void main_render(void) {
     ui_panel(px, list_y + 70, pw, 46, 1.0f);
     snprintf(buf, sizeof(buf), "ASSIGNMENTS  %2d / 12", done);
     gfx_text(FONT_SMALL, px + 10, list_y + 78, buf, C_DIM, ALIGN_LEFT);
-    snprintf(buf, sizeof(buf), "LANDMARKS    %2d / 5", __builtin_popcount(a->prog.landmarks));
+    snprintf(buf, sizeof(buf), "LANDMARKS    %2d / 5    SIGNALS %2d / 32", __builtin_popcount(a->prog.landmarks), __builtin_popcount(a->prog.signals_found));
     gfx_text(FONT_SMALL, px + 10, list_y + 94, buf, C_DIM, ALIGN_LEFT);
     if (a->note_t > 0) gfx_text(FONT_SMALL, px + pw * 0.5f, list_y + 124, a->note, C_ACC, ALIGN_CENTER);
     ui_footer("X:SELECT O:BACK");
@@ -196,7 +197,7 @@ static void missions_update(void) {
     App *a = &g_app;
     list_nav(&a->menu_sel, MISSION_COUNT);
     if (back()) { a->menu_sel = 0; app_set_state(ST_MENU); return; }
-    if (a->in.pressed & PSP_CTRL_TRIANGLE) { sfx_play(&a->sfx, SFX_UI_SELECT); a->menu_top = a->menu_sel; a->menu_sel = 0; app_set_state(ST_CASEFILE); return; }
+    if (a->in.pressed & PSP_CTRL_TRIANGLE) { sfx_play(&a->sfx, SFX_UI_SELECT); a->menu_top = a->menu_sel; a->menu_sel = 0; a->debrief_page = 0; app_set_state(ST_CASEFILE); return; }
     if (ok()) {
         if (!progress_mission_unlocked(&a->prog, a->menu_sel)) { app_note("COMPLETE THE PREVIOUS ASSIGNMENT FIRST"); sfx_play(&a->sfx, SFX_FAIL); return; }
         a->mission_id = a->menu_sel;
@@ -532,6 +533,7 @@ static void load_render(void) {
     snprintf(buf, sizeof(buf), "DISTRICTS CLEARED      %d / 4", __builtin_popcount(p->districts)); gfx_text(FONT_SMALL, 110, 90, buf, C_TXT, ALIGN_LEFT);
     snprintf(buf, sizeof(buf), "FLIGHT TIME            %dh %02dm", (int)(p->play_seconds / 3600), (int)(p->play_seconds / 60 % 60)); gfx_text(FONT_SMALL, 110, 104, buf, C_TXT, ALIGN_LEFT);
     snprintf(buf, sizeof(buf), "CURRENT SEED           %u", p->music.seed); gfx_text(FONT_SMALL, 110, 118, buf, C_TXT, ALIGN_LEFT);
+    snprintf(buf, sizeof(buf), "SIGNALS INTERCEPTED    %d / 32", __builtin_popcount(p->signals_found)); gfx_text(FONT_SMALL, 110, 132, buf, C_TXT, ALIGN_LEFT);
     menu_item(110, 150, "LOAD SAVED GAME", NULL, a->menu_sel == 0, 1);
     menu_item(110, 168, "START NEW CAREER", NULL, a->menu_sel == 1, 1);
     if (a->note_t > 0) gfx_text(FONT_SMALL, SCR_W * 0.5f, 200, a->note, C_ACC, ALIGN_CENTER);
@@ -669,6 +671,7 @@ static int casefile_entries(int *ids) {
     int n = 0;
     ids[n++] = -1;   /* prologue */
     for (int i = 0; i < MISSION_COUNT; i++) if (g_app.prog.missions_done & (1u << i)) ids[n++] = i;
+    if (g_app.prog.signals_found) ids[n++] = 100;   /* intercepted transmissions */
     return n;
 }
 
@@ -678,6 +681,12 @@ static void casefile_update(void) {
     list_nav(&a->menu_sel, n);
     if (back() || (a->in.pressed & PSP_CTRL_TRIANGLE)) { a->menu_sel = a->menu_top; app_set_state(ST_MISSIONS); return; }
     if (ok() && ids[a->menu_sel] < 0) start_prologue(ST_CASEFILE);
+    if (ids[h_clampi(a->menu_sel, 0, n - 1)] == 100) {
+        int c = __builtin_popcount(a->prog.signals_found);
+        if (a->in.pressed & PSP_CTRL_RIGHT) { a->debrief_page = (a->debrief_page + 1) % c; sfx_play(&a->sfx, SFX_UI_MOVE); }
+        if (a->in.pressed & PSP_CTRL_LEFT) { a->debrief_page = (a->debrief_page + c - 1) % c; sfx_play(&a->sfx, SFX_UI_MOVE); }
+        if (a->debrief_page >= c) a->debrief_page = 0;
+    }
 }
 
 static void casefile_render(void) {
@@ -686,17 +695,31 @@ static void casefile_render(void) {
     gfx_rect(0, 0, SCR_W, SCR_H, RGBA(0, 0, 0, 175));
     ui_header("CASE FILE", "61.7 MHz - UNRESOLVED");
     for (int k = 0; k < n; k++) {
-        float y = 42 + 16.0f * (float)k;
+        float y = 42 + 15.0f * (float)k;
         int sel = a->menu_sel == k;
         if (sel) { gfx_rect(14, y - 2, 176, 15, RGBA(255, 186, 90, 30)); gfx_rect(14, y - 2, 3, 15, C_SEL); }
         char buf[40];
         if (ids[k] < 0) snprintf(buf, sizeof(buf), "PROLOGUE");
+        else if (ids[k] == 100) snprintf(buf, sizeof(buf), "INTERCEPTS  %d/32", __builtin_popcount(a->prog.signals_found));
         else snprintf(buf, sizeof(buf), "%02d  %s", ids[k] + 1, hush_missions[ids[k]].title);
         gfx_text(FONT_SMALL, 24, y, buf, sel ? C_SEL : C_TXT, ALIGN_LEFT);
     }
     ui_panel(202, 42, 264, 190, 1.0f);
     int id = ids[h_clampi(a->menu_sel, 0, n - 1)];
-    if (id < 0) {
+    if (id == 100) {
+        /* the k-th captured transmission, in id order */
+        int k = 0, sid = -1, c = __builtin_popcount(a->prog.signals_found);
+        for (int i = 0; i < SIGNAL_TOTAL; i++) if ((a->prog.signals_found >> i) & 1) { if (k == a->debrief_page) { sid = i; break; } k++; }
+        gfx_text(FONT_SMALL, 214, 52, "INTERCEPTED TRANSMISSION", C_SEL, ALIGN_LEFT);
+        if (sid >= 0) {
+            char hb[48];
+            snprintf(hb, sizeof(hb), "%02d  -  %s", sid + 1, world_district_name(sid / SIGNALS_PER_DISTRICT));
+            gfx_text(FONT_SMALL, 214, 66, hb, C_ACC, ALIGN_LEFT);
+            gfx_text_wrap(FONT_SMALL, 214, 86, 240, story_intercept[sid], C_TXT, 8, -1);
+            snprintf(hb, sizeof(hb), "%d / %d", a->debrief_page + 1, c);
+            gfx_text(FONT_SMALL, 214, 214, hb, C_DIM, ALIGN_LEFT);
+        }
+    } else if (id < 0) {
         gfx_text(FONT_SMALL, 214, 52, "PROLOGUE", C_SEL, ALIGN_LEFT);
         gfx_text_wrap(FONT_SMALL, 214, 72, 240, "Vesper, the Authority, and eleven nights of a signal nobody owns. Press CROSS to replay.", C_TXT, 6, -1);
     } else {
@@ -706,7 +729,8 @@ static void casefile_render(void) {
         gfx_text_wrap(FONT_SMALL, 214, 98 + 14.0f * (float)l, 240, hush_missions[id].debrief[0], C_DIM, 4, -1);
     }
     if (n == 1) gfx_text_wrap(FONT_SMALL, 24, 70, 166, "Complete assignments to add entries.", C_DIM, 3, -1);
-    ui_footer(ids[h_clampi(a->menu_sel, 0, n - 1)] < 0 ? "X:REPLAY O:BACK" : "O:BACK");
+    int cur = ids[h_clampi(a->menu_sel, 0, n - 1)];
+    ui_footer(cur < 0 ? "X:REPLAY O:BACK" : (cur == 100 ? "h:PAGE O:BACK" : "O:BACK"));
 }
 
 /* ---------------- dispatch ---------------- */

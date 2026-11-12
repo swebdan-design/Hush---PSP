@@ -9,6 +9,7 @@ void sfx_init(Sfx *s, float sr) {
     s->master = 0.7f;
     s->noise = 0x9E3779B9u;
     s->key = 9;
+    s->mnoise = 0x51ED270Bu;
 }
 
 void sfx_play(Sfx *s, int type) {
@@ -20,7 +21,7 @@ void sfx_play(Sfx *s, int type) {
     s->req_head = h + 1;
 }
 
-static const float shot_dur[SFX_COUNT] = { 0.06f, 0.12f, 0.1f, 0.7f, 0.45f, 0.6f, 0.5f, 0.35f, 0.6f, 2.5f, 1.2f, 2.0f };
+static const float shot_dur[SFX_COUNT] = { 0.06f, 0.12f, 0.1f, 0.7f, 0.45f, 0.6f, 0.5f, 0.35f, 0.6f, 2.5f, 1.2f, 2.0f, 0.07f, 0.42f, 1.6f };
 
 static void start_shot(Sfx *s, int type) {
     int best = 0;
@@ -36,6 +37,7 @@ static void start_shot(Sfx *s, int type) {
     x->dur = shot_dur[type];
     x->gain = 1.0f;
     x->noise = 0x1234567u + (uint32_t)type * 7919u;
+    if (type == SFX_HORN) x->gain = h_clampf(s->horn_pan, -1.0f, 1.0f);   /* gain field carries the pan */
 }
 
 static float shot_sample(Sfx *s, SfxShot *x, float *pan) {
@@ -94,6 +96,28 @@ static float shot_sample(Sfx *s, SfxShot *x, float *pan) {
         env = 1.0f - k;
         x->ph += dsp_hz_inc(220.0f - 110.0f * k);
         y = (dsp_read(sine, x->ph) > 0.2f ? 1.0f : -1.0f) * env * 0.06f; break;
+    case SFX_PING: {
+        /* the scanner's Geiger tick: a short sine blip two octaves above the key root */
+        env = 1.0f - k; env *= env;
+        x->ph += dsp_hz_inc(dsp_midi_hz((float)(84 + s->key % 12)));
+        y = dsp_read(sine, x->ph) * env * 0.10f; break;
+    }
+    case SFX_HORN: {
+        /* a distant two-tone car horn, small and boxy, from the street below */
+        env = k < 0.08f ? k / 0.08f : (k > 0.85f ? (1.0f - k) / 0.15f : 1.0f);
+        x->ph += dsp_hz_inc(392.0f); x->ph2 += dsp_hz_inc(494.0f);
+        float sq = (dsp_read(sine, x->ph) > 0 ? 1.0f : -1.0f) + (dsp_read(sine, x->ph2) > 0 ? 1.0f : -1.0f);
+        x->wl += (sq - x->wl) * 0.18f;
+        y = x->wl * env * 0.035f; *pan = x->gain * 0.6f; break;
+    }
+    case SFX_CAPTURE: {
+        /* a captured transmission resolves: a tuned sweep settling on the fifth */
+        env = k < 0.05f ? k / 0.05f : (1.0f - k) * (1.0f - k);
+        float n = (float)(67 + s->key % 12) + (k < 0.2f ? (k / 0.2f - 1.0f) * 5.0f : 0.0f);
+        x->ph += dsp_hz_inc(dsp_midi_hz(n)); x->ph2 += dsp_hz_inc(dsp_midi_hz(n + 7.0f) * 1.002f);
+        y = (dsp_read(sine, x->ph) * 0.6f + dsp_read(sine, x->ph2) * 0.4f) * env * 0.10f
+          + dsp_noise(&x->noise) * (1.0f - k) * 0.012f; *pan = 0.15f; break;
+    }
     case SFX_COMPLETE: default: {
         env = k < 0.05f ? k / 0.05f : (1.0f - k);
         float f1 = dsp_midi_hz((float)(64 + s->key % 12) + (k > 0.3f ? 5.0f : 0.0f));
@@ -114,12 +138,14 @@ void sfx_render(Sfx *s, float *out, int n) {
     s->wind_s += (h_clampf(s->wind, 0.0f, 1.0f) - s->wind_s) * k;
     s->scan_s += (h_clampf(s->scan, 0.0f, 1.0f) - s->scan_s) * k;
     s->pitch_s += (s->engine_pitch - s->pitch_s) * k * 0.5f;
+    s->crowd_s += (h_clampf(s->crowd, 0.0f, 1.0f) - s->crowd_s) * k * 0.25f;
     /* engine: three detuned partials around the key root, slightly rising with thrust */
     float root = (float)(36 + ((s->key % 12) + 12) % 12) + s->pitch_s;
     uint32_t i1 = dsp_hz_inc(dsp_midi_hz(root)), i2 = dsp_hz_inc(dsp_midi_hz(root + 12.03f)), i3 = dsp_hz_inc(dsp_midi_hz(root + 19.0f));
     uint32_t is = dsp_hz_inc(dsp_midi_hz((float)(84 + ((s->key % 12) + 12) % 12)));
     float eg = s->eng_s * 0.07f, wg = s->wind_s * 0.09f, sg = s->scan_s * 0.035f;
     float wc = 0.02f + 0.25f * s->wind_s;
+    float cg = s->crowd_s * 0.05f, lfo_inc = 1.0f / s->sr;
     float m = s->master;
     for (int i = 0; i < n; i++) {
         float e = 0;
@@ -141,7 +167,18 @@ void sfx_render(Sfx *s, float *out, int n) {
             if (s->scan_lfo > 1.0f) s->scan_lfo -= 1.0f;
             sc = dsp_read(sine, s->sph) * sg * (s->scan_lfo < 0.15f ? 1.0f : 0.15f);
         }
-        float L = e + w * 0.8f + sc, R = e + w + sc;
+        float mu = 0;
+        if (cg > 0.0005f) {
+            /* murmur: band-passed noise with two slow, unrelated syllable rates */
+            float nz = dsp_noise(&s->mnoise);
+            s->mlp += (nz - s->mlp) * 0.09f;
+            s->mbp += (s->mlp - s->mbp) * 0.02f;
+            s->mlfo1 += 3.1f * lfo_inc; if (s->mlfo1 > 1.0f) s->mlfo1 -= 1.0f;
+            s->mlfo2 += 4.7f * lfo_inc; if (s->mlfo2 > 1.0f) s->mlfo2 -= 1.0f;
+            float am = 0.35f + 0.65f * (s->mlfo1 < 0.5f ? s->mlfo1 * 2.0f : 2.0f - s->mlfo1 * 2.0f) * (s->mlfo2 < 0.6f ? 1.0f : 0.4f);
+            mu = (s->mlp - s->mbp) * am * cg * 3.0f;
+        }
+        float L = e + w * 0.8f + sc + mu, R = e + w + sc + mu * 0.85f;
         for (int k2 = 0; k2 < SFX_SHOTS; k2++) {
             SfxShot *x = &s->shots[k2];
             if (x->dur <= 0) continue;

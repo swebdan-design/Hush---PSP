@@ -361,4 +361,5 @@ const MusicViz *hush_music_viz(HushMusic *m) { return &m->viz; }
 uint32_t hush_music_event_hash(HushMusic *m) { return m->c.event_hash; }
 uint32_t hush_music_event_count(HushMusic *m) { return m->c.event_count; }
 void hush_music_set_economy(HushMusic *m, int on) { m->economy = on; }
+void hush_music_set_collected(HushMusic *m, uint32_t mask) { m->collected = mask; }
 void hush_music_stats(HushMusic *m, MusicStats *out) { *out = m->c.stats; }

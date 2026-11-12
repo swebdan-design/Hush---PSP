@@ -1,41 +1,147 @@
 HUSH: boot, save: no save found
-AUTOTEST: determinism seed=4817 events=105 hash=713db168 (offline render of 60s took 10673 ms emulated)
+EV 0 0 33 33
+EV 0 0 45 22
+EV 0 1 57 29
+EV 0 1 64 29
+EV 0 1 67 29
+EV 0 1 72 33
+EV 0 5 72 64
+EV 0 2 33 49
+EV 0 3 0 101
+EV 0 3 7 30
+EV 1 3 2 17
+EV 5 3 7 33
+EV 8 3 0 93
+EV 16 5 36 64
+EV 16 3 5 34
+EV 27 3 7 26
+EV 28 2 33 46
+EV 32 2 33 46
+EV 44 2 33 46
+EV 44 3 0 100
+EV 124 2 33 45
+EV 128 1 55 29
+EV 128 1 62 29
+EV 128 1 67 29
+EV 128 1 71 33
+EV 156 2 43 45
+EV 183 2 36 35
+EV 204 2 43 50
+EV 208 2 43 50
+EV 219 3 7 33
+EV 220 2 43 52
+EV 224 0 79 9
+EV 224 2 43 53
+EV 229 2 43 40
+EV 230 1 62 14
+EV 230 1 67 14
+EV 230 1 71 14
+EV 236 2 43 53
+EV 240 2 43 53
+EV 240 3 0 123
+EV 242 1 62 14
+EV 242 1 67 14
+EV 242 1 71 14
+EV 245 2 43 41
+EV 246 1 62 14
+EV 246 1 67 14
+EV 246 1 71 14
+EV 250 2 67 25
+EV 252 2 43 54
+EV 256 2 43 54
+EV 260 2 47 41
+EV 263 2 36 41
+EV 264 3 5 33
+EV 266 1 62 14
+EV 266 1 67 14
+EV 266 1 71 14
+EV 268 2 43 54
+EV 269 2 41 41
+EV 272 2 43 54
+EV 272 3 0 103
+EV 274 2 74 25
+EV 279 2 36 41
+EV 282 2 79 24
+EV 284 2 43 54
+EV 284 3 0 91
+EV 285 2 41 41
+EV 288 2 43 54
+EV 288 3 0 93
+EV 292 2 47 41
+EV 294 2 36 41
+EV 295 2 36 41
+EV 299 2 38 41
+EV 300 2 43 54
+EV 301 2 41 41
+EV 303 2 36 41
+EV 304 2 43 54
+EV 309 2 47 41
+EV 310 2 83 23
+EV 311 2 36 41
+EV 315 2 38 41
+EV 316 2 43 54
+EV 319 2 36 41
+EV 320 2 43 54
+EV 322 1 62 14
+EV 322 1 67 14
+EV 322 1 71 14
+EV 324 2 47 41
+EV 325 2 47 41
+EV 326 2 36 41
+EV 328 3 0 110
+EV 330 1 62 14
+EV 330 1 67 14
+EV 330 1 71 14
+EV 330 2 67 23
+EV 331 2 38 41
+EV 332 2 43 54
+EV 333 2 41 41
+EV 335 2 36 41
+EV 336 2 43 54
+EV 340 2 47 41
+EV 341 2 47 41
+EV 342 2 36 41
+EV 348 2 43 54
+EV 350 2 47 41
+EV 351 2 36 41
+AUTOTEST: determinism seed=4817 events=105 hash=713db168 (offline render of 60s took 10675 ms emulated)
 AUTOTEST: world 0 fingerprint 98ba1ebd boxes 1042
 AUTOTEST: world 1 fingerprint 69e806eb boxes 426
 AUTOTEST: world 2 fingerprint 2a3c3d37 boxes 1770
 AUTOTEST: world 3 fingerprint 1b66b71d boxes 504
 HUSH: music engine ready in 1.3 ms (seed 4817)
-HUSH: district THE STACKS generated in 10.5 ms, mesh 132564 verts built in 83.8 ms (boxes 1770, lights 1174)
-HUSH: district CIVIC CENTRE generated in 24.8 ms, mesh 86358 verts built in 51.8 ms (boxes 1042, lights 731)
+HUSH: district THE STACKS generated in 10.6 ms, mesh 150678 verts built in 94.7 ms (boxes 1770, lights 1174)
+HUSH: district CIVIC CENTRE generated in 25.0 ms, mesh 106758 verts built in 61.0 ms (boxes 1042, lights 731)
 AUTOTEST: campaign start
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  1 FIRST WATCH          COMPLETE sim 399s hull 100 fps 29.8 tris 7850
+AUTOTEST: mission  1 FIRST WATCH          COMPLETE sim 398s hull 100 fps 30.0 tris 9888
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  2 UNLICENSED WEATHER   COMPLETE sim 190s hull 100 fps 30.0 tris 10644
+AUTOTEST: mission  2 UNLICENSED WEATHER   COMPLETE sim 190s hull 100 fps 29.1 tris 13234
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  3 COURIER              COMPLETE sim 149s hull 100 fps 29.3 tris 7292
-HUSH: district THE STACKS generated in 22.1 ms, mesh 132564 verts built in 137.0 ms (boxes 1770, lights 1174)
+AUTOTEST: mission  3 COURIER              COMPLETE sim 149s hull 100 fps 29.8 tris 8979
+HUSH: district THE STACKS generated in 10.6 ms, mesh 150678 verts built in 158.7 ms (boxes 1770, lights 1174)
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  4 SILENCE ALLOWANCE    COMPLETE sim 135s hull 100 fps 30.1 tris 5626
+AUTOTEST: mission  4 SILENCE ALLOWANCE    COMPLETE sim 135s hull 100 fps 30.0 tris 6478
 AUTOTEST: screenshot hush_shot_00_campaign.bmp saved at t=113.0
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  5 PIRATE CHOIR         COMPLETE sim 125s hull 140 fps 30.0 tris 9692
+AUTOTEST: mission  5 PIRATE CHOIR         COMPLETE sim 125s hull 140 fps 30.0 tris 11080
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  6 THE ARCHIVED WOMAN   COMPLETE sim 47s hull 140 fps 29.9 tris 6198
-HUSH: district THE WORKS generated in 61.6 ms, mesh 31992 verts built in 25.3 ms (boxes 426, lights 135)
+AUTOTEST: mission  6 THE ARCHIVED WOMAN   COMPLETE sim 47s hull 140 fps 30.1 tris 7166
+HUSH: district THE WORKS generated in 61.8 ms, mesh 49860 verts built in 31.4 ms (boxes 426, lights 135)
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  7 HAZARD CORRIDOR      COMPLETE sim 62s hull 140 fps 30.0 tris 448
+AUTOTEST: mission  7 HAZARD CORRIDOR      COMPLETE sim 62s hull 140 fps 29.4 tris 704
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  8 STATION NINE         COMPLETE sim 100s hull 180 fps 30.2 tris 906
+AUTOTEST: mission  8 STATION NINE         COMPLETE sim 100s hull 180 fps 30.0 tris 1614
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  9 LOW FREQUENCY        COMPLETE sim 48s hull 180 fps 30.0 tris 718
-AUTOTEST: screenshot hush_shot_01_campaign.bmp saved at t=163.3
-HUSH: district THE UNDERTOW generated in 1.6 ms, mesh 25554 verts built in 24.8 ms (boxes 504, lights 171)
+AUTOTEST: mission  9 LOW FREQUENCY        COMPLETE sim 48s hull 180 fps 29.8 tris 1256
+AUTOTEST: screenshot hush_shot_01_campaign.bmp saved at t=163.4
+HUSH: district THE UNDERTOW generated in 1.7 ms, mesh 31734 verts built in 28.8 ms (boxes 504, lights 171)
 HUSH: PROGRESS SAVED
-AUTOTEST: mission 10 BLACK RESERVOIR      COMPLETE sim 84s hull 180 fps 30.0 tris 1086
+AUTOTEST: mission 10 BLACK RESERVOIR      COMPLETE sim 84s hull 180 fps 30.2 tris 1348
 HUSH: PROGRESS SAVED
-AUTOTEST: mission 11 RECOVERY             COMPLETE sim 142s hull 180 fps 30.0 tris 776
+AUTOTEST: mission 11 RECOVERY             COMPLETE sim 142s hull 180 fps 30.0 tris 974
 HUSH: PROGRESS SAVED
-AUTOTEST: mission 12 THE SILENT EXCHANGE  COMPLETE sim 64s hull 180 fps 30.2 tris 1374
+AUTOTEST: mission 12 THE SILENT EXCHANGE  COMPLETE sim 64s hull 180 fps 30.0 tris 1759
 AUTOTEST: campaign 12/12 complete, missions_done=0xfff districts=0xf landmarks=0x1f
 HUSH: clean exit
+Pipelines created: 0

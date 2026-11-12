@@ -12,6 +12,7 @@
 #include "../game/autopilot.h"
 #include "../game/crowd.h"
 #include "../game/story.h"
+#include "../game/signals.h"
 #include "../audio/music.h"
 #include "../audio/sfx.h"
 #include "../platform/psp/input.h"
@@ -73,6 +74,16 @@ typedef struct {
     int fps_frames;
     int autotest;
     float emp_flash;
+
+    /* signal hunting */
+    Hunt hunt;
+    int sig_flash_id;
+    float sig_flash_t;
+    /* how the city reacts to the Moth */
+    float patrol_cool, react_cool;
+    uint32_t patrol_n, react_n;
+    float brown_t, brown_next, scan_acc;   /* local brownouts: timer, time to the next, scanner overload */
+    V3 brown_p;
 
     HushMusic *music;
     Sfx sfx;

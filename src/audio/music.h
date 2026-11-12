@@ -98,7 +98,7 @@ void hush_music_set_env(HushMusic *m, const MusicEnv *e);
 /* Re-seed: the new composition takes over at the next bar via crossfade. */
 void hush_music_reseed(HushMusic *m, uint32_t seed);
 /* Musical punctuation from gameplay (discoveries, mission complete). */
-enum { MEV_DISCOVERY = 1, MEV_MISSION_COMPLETE, MEV_SIGNAL_LOCK, MEV_ALERT };
+enum { MEV_DISCOVERY = 1, MEV_MISSION_COMPLETE, MEV_SIGNAL_LOCK, MEV_ALERT, MEV_TRANSMISSION };
 void hush_music_event(HushMusic *m, int type, int arg);
 /* Render interleaved stereo float frames. */
 void hush_music_render(HushMusic *m, float *out, int frames);
@@ -109,6 +109,8 @@ uint32_t hush_music_event_hash(HushMusic *m);
 uint32_t hush_music_event_count(HushMusic *m);
 /* lighter DSP (no chorus, no noise textures) for when the platform's audio CPU budget is tight */
 void hush_music_set_economy(HushMusic *m, int on);
+/* motifs of the hidden transmissions the player has collected (bit per id); they recur in the fragments layer */
+void hush_music_set_collected(HushMusic *m, uint32_t mask);
 
 /* Presets */
 enum { PRESET_PATROL = 0, PRESET_PURSUIT, PRESET_DRIFT, PRESET_ARCHIVE, PRESET_RESERVOIR, PRESET_CHOIR, PRESET_NULLZONE, PRESET_BUILTIN_COUNT };

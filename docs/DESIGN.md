@@ -57,6 +57,29 @@ The audio thread is independent and higher priority.
   blocks near the player, so the street is always populated. Rendering: articulated figures (≤ 40 detailed, ≤ 80 simple,
   ~100 KB of display list at most), glowing umbrella rims via the light batch.
 
+## Signal hunting (`signals.c`, `world.c add_signals`)
+- 8 transmissions per district (street, rooftop, high, water kinds), placed by the district seed and validated: a 4 m sphere
+  free of geometry, a clear vertical shaft, ≥ 110 m apart, ≥ 60 m from landing pads. IDs are `district*8 + k`.
+- `hunt_update` finds the nearest uncaptured signal within 260 m; strength = (1 − d/260)² weighted by facing (+0.25 inside
+  40 m); the ping interval is lerp(1.3 s → 0.11 s) by strength; bearing uses `craft_right`. Inside 14 m, holding the scanner
+  for 1.6 s captures it. A host test flies the autopilot to all 32 using only the hunt's outputs.
+- Music: each id seeds a motif (`signal_motif`). Capture fires `MEV_TRANSMISSION` (the motif plays once);
+  `hush_music_set_collected(mask)` lets the fragments layer quote collected motifs (p 0.22). With an empty mask no RNG
+  draw is made, so default compositions are bit-identical to before. No new voices.
+- Save: `signals_found` (u32) appended at the end of the payload, read only if present.
+
+## City reactions (`traffic.c`, `crowd.c`, `game.c city_reacts`, `render_world.c rw_set_focus`)
+- Ground cars follow the car ahead in their lane and stop for a Moth < 22 m ahead, < 6 m to the side and < 7 m up; after
+  1.2 s they honk (cooldown 2.5–4.5 s), panned in the SFX mix. Aerial traffic swerves vertically within 30 m. Patrols within
+  70 m trigger police-band lines (≥ 45 s apart).
+- Pedestrians within 45 m (and < 40 m below the craft) stop, face the Moth and sometimes film it (phone flash light);
+  closer than 18 m and below 14 m they flee. Watchers and fleeing counts drive a band-passed-noise crowd murmur (SFX path,
+  not the music engine) and occasional reaction lines.
+- Renderer: billboards within 48 m glitch over to *THE ARCHIVE* / *REPORT UNLICENSED SONG*; a held scanner makes emissives
+  within 30 m stutter; local brownouts (scanner overload after 5 s low, or ambient every ~50–90 s) dim lights, neon and
+  signs in a 60 m radius for 6 s; downwash spray below 12 m; manhole steam from `w->steams`. All are per-frame multipliers
+  or puffs from the existing 110-puff pool — no new geometry budgets.
+
 ## Handedness
 The world is right-handed with Y up; looking along +Z, screen-right is −X. `craft_right()` returns forward × up, positive
 yaw input turns right (yaw decreases), and the compass shows heading = −yaw. Host tests pin this down.

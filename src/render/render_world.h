@@ -34,6 +34,9 @@ const RenderStats *rw_stats(void);
 /* adaptive detail 0 (lowest) .. 3 (full): draw distance, light/sign/crowd/rain budgets, reflections */
 void rw_set_quality(int q);
 int rw_quality(void);
+/* the city's reaction to the Moth: billboards retarget, the scanner makes nearby signs stutter,
+ * a local brownout dims lights around brown_p, downwash kicks up spray, manhole steam. */
+void rw_set_focus(V3 craft, int scanning, V3 brown_p, float brown, float dt);
 
 static inline int vent_active(int i, float t) { float p = fmodf(t + (float)i * 1.7f, 6.0f); return p < 2.6f; }
 

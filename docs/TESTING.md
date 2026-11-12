@@ -16,11 +16,17 @@ cycle-accurate, so its frame-rate and CPU figures are *indicative only*.
 | `make host` (renderer + tests) compiles with `-Wall -Wextra`, no warnings | pass |
 | Repeatable from clean (`rm -rf build && make`) | pass |
 
-## 2. Host test-suite (`make test`: 126 checks; `make test-full` adds the 30-minute run — `docs/validation/host_tests_*.log`)
+## 2. Host test-suite (`make test`: 187 checks; `make test-full` adds the 30-minute run — `docs/validation/host_tests_*.log`)
 - **Handedness** (added after a player reported mirrored strafe/turn): stick-right moves toward the camera's screen-right,
   R turns the nose toward screen-right, banking matches, `craft_right == forward × up`.
 - **Crowd**: no pedestrian inside geometry after 60 s, the crowd gathers around the player, umbrellas in rain, flight from a
   low Moth, nobody in the flooded Undertow. **Street lanes** are covered by the lane-clearance test.
+- **Signal hunting**: every district has 8 valid signals (free sphere, clear shaft, spacing); the autopilot, steered only by
+  the hunt's bearing/strength outputs, captures **all 32**; strength rises when facing the source; `signals_found` survives a
+  save round trip and an old save without the field loads with 0. Collected motifs: same mask → identical audio, empty mask →
+  bit-identical to the pre-feature fingerprints.
+- **City reactions**: a street car stops for a Moth hovering 15 m ahead in its lane, honks, and drives on once it leaves;
+  a flying car swerves > 4 m around a Moth in its path; pedestrians across the street stop to watch and some take pictures.
 - **Saves**: round trip of every field; corruption, truncation, wrong magic and missing file are rejected and fall back to defaults.
 - **World**: deterministic generation for all four districts; spawn points free; every traffic/mission lane sampled every 4 m is
   collision-free (this test found and fixed three real routing conflicts during development); each district has a pad and a landmark.
@@ -49,6 +55,12 @@ The Moth is placed on a Stacks street in heavy rain: chase, cockpit and cinemati
 lane markings, street traffic, pedestrians with lit umbrellas and wet-street reflections (`artwork/screenshots/HUSH_14..16`).
 Then the Operator's Log, prologue and Case File screens (`HUSH_17..19`); the prologue sets `story_flags=1` in the save.
 A display-list overflow found here (crowd geometry ~460 KB) was fixed by capping rendered figures.
+
+### 3a-ter. Signal hunting and city reactions (same run)
+Hovering 18 m above a Stacks street: **27 pedestrians stop to watch**, crowd murmur at full level (`HUSH_20`). Signal hunt
+from 45 m with the source behind the Moth: trace strength 0.31, bearing −3.14 rad, chevron shown (`HUSH_21`); flown into
+range, the transmission is **captured in 1.6 s**, autosaved, music event fired (`HUSH_22`); the save reload later confirms
+`signals 0x00010000` persisted; the Case File shows the intercept text (`HUSH_23`). 0 late audio blocks for the whole run.
 
 ### 3b. Full campaign (`build/autotest-campaign/EBOOT.PBP`) — `docs/validation/ppsspp_campaign.log`
 All 12 missions played in order in the PSP build, autopiloted and fast-forwarded ×8 in simulation:
