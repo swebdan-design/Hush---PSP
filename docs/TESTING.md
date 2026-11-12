@@ -145,6 +145,15 @@ Reported by the player: (1) frame rate became jittery/choppy at times, (2) windo
   e.g. street 17.3 → 15.9 %, patrol 31 → 27.6 % (PPSSPP clock).
 - `hush_log.txt` now includes a per-second "ms/frame" breakdown of the most expensive stages, timed on the real clock.
 
+## 5e. Third hardware report: "98 % perfect" — street occasionally vanishes into a blue wedge toward the reticle
+- The ground was the one horizontal surface still drawn as 77 m tiles, relying on the clipper alone; near the camera its
+  clipped triangles reached ~1600 px off-screen. The real GE dropped some of these (the 2D sky gradient showed through);
+  PPSSPP draws them (a 48-view street sweep, `make autotest-sweep`, never showed the gap).
+- Fix: ground tiles near the camera are cut into ~19 m cells (4x4 within 90 m, 2x2 within 200 m), and the clipper's
+  safe frustum shrinks from 80 % of the guard band to 2 screen-widths (`GC_SAFE_SCREENS`); a host test checks that no
+  emitted vertex lies further out. Cost in PPSSPP: +0.7–0.9 ms CPU per frame. Sweep re-run: street solid in all 48 views.
+  **Awaiting hardware confirmation.**
+
 ## 6. Known issues and limitations
 - Not tested on PSP hardware; the GE's handling of large near-plane triangles is mitigated by facade tessellation but unverified on device.
 - PPSSPP software renderer only; hardware-accelerated backends were not exercised.

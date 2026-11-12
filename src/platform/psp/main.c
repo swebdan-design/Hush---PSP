@@ -16,7 +16,7 @@
 #include "diag.h"
 #include <pspfpu.h>
 
-#define HUSH_BUILD "build 2026-11-12c"
+#define HUSH_BUILD "build 2026-11-12d"
 
 PSP_MODULE_INFO("HUSH", 0, 1, 0);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
@@ -178,7 +178,29 @@ static void perf(const char *tag) {
 static int g_step __attribute__((unused));
 static int g_horns __attribute__((unused));
 static float g_step_t;
-#if HUSH_AUTOTEST == 2
+#if HUSH_AUTOTEST == 3
+/* ground-plane sweep: the Moth parked over a Stacks street at several heights, turning in 30 degree steps */
+static void autotest_tick(float dt) {
+    App *a = &g_app;
+    Input *in = &a->in;
+    in->scripted = 1; in->s_held = 0; in->s_lx = 0; in->s_ly = 0;
+    g_step_t += dt;
+    static const float hts[4] = { 3.0f, 8.0f, 20.0f, 60.0f };
+    if (g_step == 0) { a->prog.drift_district = DISTRICT_STACKS; a->prog.drift_weather = WX_LIGHT_RAIN; a->prog.drift_tod = TOD_NIGHT; app_start_drift(); g_step = 1; g_step_t = 0; return; }
+    int k = g_step - 1;
+    if (k >= 4 * 12) { printf("AUTOTEST: sweep done\n"); a->quit = 1; return; }
+    const Block *bl = &a->world.blocks[a->world.n_blocks / 2 + 7];
+    float street = a->world.pitch - (bl->x1 - bl->x0);
+    a->craft.pos = v3(bl->x1 + street * 0.5f, a->world.ground_y + hts[k / 12], (bl->z0 + bl->z1) * 0.5f);
+    a->craft.vel = v3(0, 0, 0);
+    a->craft.yaw = (float)(k % 12) * (H_TAU / 12.0f);
+    if (g_step_t < 0.05f) camera_init(&a->cam, &a->craft);
+    if (g_step_t > 0.6f) {
+        char nm[32]; snprintf(nm, sizeof(nm), "sweep_h%02d_y%03d", (int)hts[k / 12], (k % 12) * 30);
+        shot(nm); g_step++; g_step_t = 0;
+    }
+}
+#elif HUSH_AUTOTEST == 2
 /* campaign run: every mission in order, autopiloted, fast-forwarded */
 static int g_cm = -1, g_cm_ok;
 static void autotest_tick(float dt) {

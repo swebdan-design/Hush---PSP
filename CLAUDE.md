@@ -22,8 +22,10 @@ Modes: **PATROL** (12 missions), **DRIFT** (free flight), **SIGNAL CONSOLE** (th
 - Save format: append new fields at the end of the payload and read them only `if (r.n < r.len)` so old saves load.
 - **PSP GE guard band** (found on a real PSP-3000, invisible in PPSSPP): after near-plane clipping the GE discards
   a whole triangle if any vertex is >2048 px from the viewport centre. Never submit big triangles near the camera:
-  horizontal faces are cut into <=20 m cells, and `src/render/guardclip.h` CPU-clips risky triangles (dynamic geometry
-  always; static boxes within 55 m get clipped replacements). Host tests model the GE rule.
+  horizontal faces (the street plane included, near the camera) are cut into <=20 m cells, and `src/render/guardclip.h`
+  CPU-clips risky triangles (dynamic geometry always; static boxes within 55 m get clipped replacements) to a safe
+  frustum only GC_SAFE_SCREENS (2) screens wide: clipping to 80 % of the guard band still lost occasional street
+  triangles on a PSP-3000 (blue wedge pointing at the horizon). Host tests model the GE rule.
 - Real hardware is slower than PPSSPP's clock suggests: keep the adaptive detail governor (`rw_set_quality`) and the
   audio economy mode working; the performance overlay shows real frame ms, clipped tris, audio load and detail level.
 - Display list is 1 MB per frame: cap any per-frame dynamic geometry (crowd capped at 40 near + 80 far figures).

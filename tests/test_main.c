@@ -425,6 +425,28 @@ static void test_guardclip(void) {
         if (on_screen && n == 0) lost_visible++;
     }
     CHECK(rejected_after == 0, "fuzz: 0 of %d emitted triangles would be rejected (%d)", total, rejected_after);
+    {   /* and every emitted vertex stays within GC_SAFE_SCREENS screens of the centre (no extreme triangles) */
+        int far_out = 0;
+        s = 777;
+        for (int k = 0; k < 4000; k++) {
+            GcVtx t[3];
+            for (int i = 0; i < 3; i++) {
+                s ^= s << 13; s ^= s >> 17; s ^= s << 5; t[i].x = (float)(s % 2000) / 10.0f - 100.0f;
+                s ^= s << 13; s ^= s >> 17; s ^= s << 5; t[i].y = (float)(s % 2000) / 50.0f - 15.0f;
+                s ^= s << 13; s ^= s >> 17; s ^= s << 5; t[i].z = (float)(s % 2000) / 10.0f - 60.0f;
+                t[i].u = t[i].v = 0; t[i].color = 0xff808080u;
+            }
+            n = 0;
+            const GcVtx *src = out;
+            int cnt;
+            if (gc_clip_tri(&g, &t[0], &t[1], &t[2], out, &n, 4096)) { src = t; cnt = 3; } else cnt = n;
+            for (int i = 0; i < cnt; i++) {
+                GcCV c; gc_cvx(&g, &c, &src[i]);
+                if (c.cz <= 0 || fabsf(c.cx / c.cz * fx) > 240.0f * GC_SAFE_SCREENS * 1.001f || fabsf(c.cy / c.cz * fy) > 136.0f * GC_SAFE_SCREENS * 1.001f) far_out++;
+            }
+        }
+        CHECK(far_out == 0, "fuzz: no emitted vertex lies more than %.0f screens from the centre (%d)", GC_SAFE_SCREENS, far_out);
+    }
     CHECK(lost_visible == 0, "fuzz: no on-screen triangle disappears (%d lost)", lost_visible);
 }
 

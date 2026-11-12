@@ -4,10 +4,15 @@
  * primitive if any resulting vertex falls outside its 4096 x 4096 drawing area
  * (here: more than 2048 px from our viewport centre). Large triangles near the
  * camera therefore vanish on real hardware (emulators usually draw them).
- * gc_clip_tri() clips such triangles against a smaller "safe" frustum whose side
- * planes sit at 80 % of the guard band, so everything it emits is accepted. */
+ * gc_clip_tri() clips such triangles against a smaller "safe" frustum, so everything it emits is accepted.
+ *
+ * The safe frustum is GC_SAFE_SCREENS screen-sizes wide (not just inside the 4096 px guard band): a real PSP-3000
+ * still dropped occasional ground triangles that were clipped to 80 % of the guard band (~1600 px off-screen),
+ * which PPSSPP draws. Triangles that reach at most one screen beyond the edge keep the GE well inside its limits. */
 #ifndef HUSH_GUARDCLIP_H
 #define HUSH_GUARDCLIP_H
+
+#define GC_SAFE_SCREENS 2.0f
 
 #include <stdint.h>
 #include "../core/hmath.h"
@@ -20,8 +25,8 @@ typedef struct { V3 e, f, r, u; float kx, ky, n; } GuardClip;
 static inline void gc_setup(GuardClip *g, V3 eye, V3 fwd, V3 right, V3 up, float tan_half_vfov, float scr_w, float scr_h, float znear) {
     g->e = eye; g->f = fwd; g->r = right; g->u = up;
     float th = tan_half_vfov * scr_w / scr_h;
-    g->kx = 0.8f * (2048.0f / (scr_w * 0.5f)) * th;
-    g->ky = 0.8f * (2048.0f / (scr_h * 0.5f)) * tan_half_vfov;
+    g->kx = GC_SAFE_SCREENS * th;
+    g->ky = GC_SAFE_SCREENS * tan_half_vfov;
     g->n = znear * 1.15f;
 }
 

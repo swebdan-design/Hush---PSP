@@ -407,10 +407,24 @@ static void ground_plane(const World *w, const Atmos *a, float y, const Tex *t, 
             float x0 = o + s * (float)i, x1 = x0 + s, z0 = o + s * (float)j, z1 = z0 + s;
             float cx = h_clampf(eye.x, x0, x1) - eye.x, cz = h_clampf(eye.z, z0, z1) - eye.z;
             if (cx * cx + cz * cz > far2) continue;   /* fully fogged */
-            VtxTCP q[4] = { {x0 * uvscale + uoff, z1 * uvscale + voff, col, x0, y, z1}, {x1 * uvscale + uoff, z1 * uvscale + voff, col, x1, y, z1},
-                            {x1 * uvscale + uoff, z0 * uvscale + voff, col, x1, y, z0}, {x0 * uvscale + uoff, z0 * uvscale + voff, col, x0, y, z0} };
-            dyn_quad(q);
-            if (g_nclip > CLIP_MAX - 64) clip_flush();
+            /* tiles near the camera are cut into ~19 m cells like every other horizontal face: no extreme triangles */
+            float dn = sqrtf(cx * cx + cz * cz);
+            int sub = dn < 90.0f ? 4 : (dn < 200.0f ? 2 : 1);
+            float cs = s / (float)sub;
+            for (int sj = 0; sj < sub; sj++)
+                for (int si = 0; si < sub; si++) {
+                    float a0 = x0 + cs * (float)si, a1 = a0 + cs, b0 = z0 + cs * (float)sj, b1 = b0 + cs;
+                    VtxTCP q[4] = { {a0 * uvscale + uoff, b1 * uvscale + voff, col, a0, y, b1}, {a1 * uvscale + uoff, b1 * uvscale + voff, col, a1, y, b1},
+                                    {a1 * uvscale + uoff, b0 * uvscale + voff, col, a1, y, b0}, {a0 * uvscale + uoff, b0 * uvscale + voff, col, a0, y, b0} };
+                    if (sub > 1) {
+                        /* skip cells entirely behind the camera */
+                        float mx = (a0 + a1) * 0.5f - eye.x, mz = (b0 + b1) * 0.5f - eye.z;
+                        V3 f = gfx_cam_fwd();
+                        if (mx * f.x + mz * f.z < -cs) continue;
+                    }
+                    dyn_quad(q);
+                    if (g_nclip > CLIP_MAX - 64) clip_flush();
+                }
         }
     clip_flush();
     (void)w;

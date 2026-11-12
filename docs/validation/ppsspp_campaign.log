@@ -114,34 +114,34 @@ HUSH: district THE STACKS generated in 10.6 ms, mesh 150678 verts built in 94.1 
 HUSH: district CIVIC CENTRE generated in 28.1 ms, mesh 106758 verts built in 60.6 ms (boxes 1042, lights 731)
 AUTOTEST: campaign start
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  1 FIRST WATCH          COMPLETE sim 398s hull 100 fps 29.7 tris 9888 list peak 352KB
+AUTOTEST: mission  1 FIRST WATCH          COMPLETE sim 399s hull 100 fps 30.0 tris 9882 list peak 408KB
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  2 UNLICENSED WEATHER   COMPLETE sim 190s hull 100 fps 30.0 tris 13234 list peak 352KB
+AUTOTEST: mission  2 UNLICENSED WEATHER   COMPLETE sim 190s hull 100 fps 29.9 tris 13228 list peak 408KB
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  3 COURIER              COMPLETE sim 149s hull 100 fps 27.1 tris 8979 list peak 353KB
+AUTOTEST: mission  3 COURIER              COMPLETE sim 149s hull 100 fps 27.4 tris 9012 list peak 408KB
 HUSH: district THE STACKS generated in 32.1 ms, mesh 150678 verts built in 141.8 ms (boxes 1770, lights 1174)
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  4 SILENCE ALLOWANCE    COMPLETE sim 135s hull 100 fps 29.6 tris 6478 list peak 353KB
-AUTOTEST: screenshot hush_shot_00_campaign.bmp saved at t=113.1
+AUTOTEST: mission  4 SILENCE ALLOWANCE    COMPLETE sim 135s hull 100 fps 29.5 tris 6475 list peak 408KB
+AUTOTEST: screenshot hush_shot_00_campaign.bmp saved at t=113.0
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  5 PIRATE CHOIR         COMPLETE sim 125s hull 140 fps 29.4 tris 11080 list peak 353KB
+AUTOTEST: mission  5 PIRATE CHOIR         COMPLETE sim 125s hull 140 fps 29.9 tris 11155 list peak 408KB
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  6 THE ARCHIVED WOMAN   COMPLETE sim 47s hull 140 fps 29.2 tris 7166 list peak 380KB
-HUSH: district THE WORKS generated in 55.9 ms, mesh 49860 verts built in 39.0 ms (boxes 426, lights 135)
+AUTOTEST: mission  6 THE ARCHIVED WOMAN   COMPLETE sim 47s hull 140 fps 28.5 tris 7165 list peak 411KB
+HUSH: district THE WORKS generated in 72.4 ms, mesh 49860 verts built in 40.3 ms (boxes 426, lights 135)
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  7 HAZARD CORRIDOR      COMPLETE sim 62s hull 140 fps 29.3 tris 704 list peak 380KB
+AUTOTEST: mission  7 HAZARD CORRIDOR      COMPLETE sim 62s hull 140 fps 29.3 tris 703 list peak 411KB
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  8 STATION NINE         COMPLETE sim 100s hull 180 fps 29.5 tris 1614 list peak 380KB
+AUTOTEST: mission  8 STATION NINE         COMPLETE sim 100s hull 180 fps 29.2 tris 1604 list peak 411KB
 HUSH: PROGRESS SAVED
-AUTOTEST: mission  9 LOW FREQUENCY        COMPLETE sim 48s hull 180 fps 29.1 tris 1256 list peak 380KB
-AUTOTEST: screenshot hush_shot_01_campaign.bmp saved at t=163.5
+AUTOTEST: mission  9 LOW FREQUENCY        COMPLETE sim 48s hull 180 fps 28.6 tris 1270 list peak 411KB
+AUTOTEST: screenshot hush_shot_01_campaign.bmp saved at t=163.4
 HUSH: district THE UNDERTOW generated in 1.7 ms, mesh 31734 verts built in 18.9 ms (boxes 504, lights 171)
 HUSH: PROGRESS SAVED
-AUTOTEST: mission 10 BLACK RESERVOIR      COMPLETE sim 84s hull 180 fps 30.0 tris 1348 list peak 380KB
+AUTOTEST: mission 10 BLACK RESERVOIR      COMPLETE sim 84s hull 180 fps 29.4 tris 1350 list peak 411KB
 HUSH: PROGRESS SAVED
-AUTOTEST: mission 11 RECOVERY             COMPLETE sim 142s hull 180 fps 30.3 tris 974 list peak 380KB
+AUTOTEST: mission 11 RECOVERY             COMPLETE sim 142s hull 180 fps 30.0 tris 980 list peak 411KB
 HUSH: PROGRESS SAVED
-AUTOTEST: mission 12 THE SILENT EXCHANGE  COMPLETE sim 64s hull 180 fps 30.0 tris 1762 list peak 380KB
+AUTOTEST: mission 12 THE SILENT EXCHANGE  COMPLETE sim 63s hull 180 fps 30.1 tris 2288 list peak 411KB
 AUTOTEST: campaign 12/12 complete, missions_done=0xfff districts=0xf landmarks=0x1f
 HUSH: clean exit
 Pipelines created: 0
