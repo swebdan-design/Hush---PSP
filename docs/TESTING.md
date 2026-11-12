@@ -127,7 +127,11 @@ Reported by the player: (1) frame rate became jittery/choppy at times, (2) windo
   display-list peak is 427 KB of 1 MB; stack frames are < 3 KB.
 - `hush_log.txt` now records the first stage at which an FPU flag is raised on hardware, a non-finite craft state is
   reset to spawn, and per-second audio load / late blocks are logged for the menu dropout report.
-  **Awaiting the next hardware run.**
+  Result on the PSP-3000: **no more crash**, but the opening sequence and the prologue ran at a crawl. Cause: the crash log
+  itself, which opened/appended/closed the file on the Memory Stick for ~30 stage markers per frame during the first frames
+  after a load or state change (and once a second otherwise) — tens of ms per write on hardware, near-free in PPSSPP.
+  The log is now buffered in RAM and written only at loads, menus, pause and exit. The audio output block was doubled to
+  2048 samples (46 ms) to ride out hitches; audio pops are otherwise awaiting the per-second audio-load numbers from the log.
 
 ## 6. Known issues and limitations
 - Not tested on PSP hardware; the GE's handling of large near-plane triangles is mitigated by facade tessellation but unverified on device.

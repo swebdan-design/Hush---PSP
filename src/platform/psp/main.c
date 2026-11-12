@@ -16,7 +16,7 @@
 #include "diag.h"
 #include <pspfpu.h>
 
-#define HUSH_BUILD "build 2026-11-12 diag"
+#define HUSH_BUILD "build 2026-11-12b"
 
 PSP_MODULE_INFO("HUSH", 0, 1, 0);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
@@ -37,7 +37,8 @@ static int cb_thread(SceSize a, void *b) {
 /* ---------------- app functions ---------------- */
 
 void app_set_state(AppState s) {
-    if (s != g_app.state) { diag_log("state %d -> %d (mode %d, district %d)", (int)g_app.state, (int)s, g_app.mode, g_app.world_district); if (s == ST_PLAY || s == ST_PROLOGUE) diag_arm(16, "gameplay starts"); }
+    if (s != g_app.state) { diag_log("state %d -> %d (mode %d, district %d)", (int)g_app.state, (int)s, g_app.mode, g_app.world_district);
+        if (s == ST_PAUSE || s == ST_MENU || s == ST_DEBRIEF || s == ST_FAILED || s == ST_OPTIONS) diag_flush(); }
     g_app.state = s;
     g_app.state_t = 0;
 }
@@ -83,7 +84,6 @@ void app_load_district(int d) {
     if (a->world_district == d) return;
     char buf[48];
     snprintf(buf, sizeof(buf), "APPROACHING %s", world_district_name(d));
-    diag_arm(16, "district load");
     diag_log("load district %d (was %d), free %d KB", d, a->world_district, (int)(sceKernelTotalFreeMemSize() / 1024));
     loading_screen(buf);
     uint64_t t0 = gfx_ticks_us();
@@ -92,6 +92,7 @@ void app_load_district(int d) {
     diag_log("generated: boxes %d lights %d ads %d neon %d signals %d peds-blocks %d in %.0f ms", a->world.n_boxes, a->world.n_lights, a->world.n_ads, a->world.n_neon, a->world.n_signals, a->world.n_blocks, (float)(t1 - t0) / 1000.0f);
     rw_build(&a->world);
     diag_log("mesh built: %d verts in %.0f ms", rw_stats()->verts_total, rw_stats()->build_ms);
+    diag_flush();   /* the loading screen is already a pause */
     a->world_district = d;
     printf("HUSH: district %s generated in %.1f ms, mesh %d verts built in %.1f ms (boxes %d, lights %d)\n",
            a->world.name, (float)(t1 - t0) / 1000.0f, rw_stats()->verts_total, rw_stats()->build_ms, a->world.n_boxes, a->world.n_lights);
@@ -374,8 +375,11 @@ int main(int argc, char **argv) {
         {   /* once a second: the numbers that matter on real hardware */
             static float acc;
             acc += dt;
+            static int secs;
             if (acc >= 1.0f) {
                 acc = 0;
+                if (++secs % 30 == 0 && a->state != ST_PLAY && a->state != ST_PROLOGUE) diag_flush();
+                if (secs % 120 == 0) diag_flush();   /* at most one short hitch every two minutes in play */
                 diag_log("st %d mode %d d%d fps %.1f frame %.1f ms cpu %.1f gpu %.1f aud %.0f%% late %u/%u q%d list %dKB tris %d", (int)a->state, a->mode, a->world_district, a->fps, a->frame_avg * 1000.0f, gfx_last_cpu_ms, gfx_last_gpu_wait_ms, audio_out_load() * 100.0f, audio_out_underruns(), audio_out_blocks(), rw_quality(), gfx_list_last / 1024, rw_stats()->tris_drawn);
             }
         }
@@ -426,6 +430,7 @@ int main(int argc, char **argv) {
         gfx_end(30);
         diag_mark("frame done");
     }
+    diag_flush();
     audio_out_stop();
     gfx_term();
     printf("HUSH: clean exit\n");

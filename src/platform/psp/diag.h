@@ -10,6 +10,7 @@ void diag_log(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 void diag_mark(const char *stage);
 void diag_arm(int frames, const char *why);   /* trace stages for the next N frames */
 void diag_frame(void);                        /* call once per frame */
+void diag_flush(void);                        /* write buffered lines to the Memory Stick (slow: quiet moments only) */
 extern int g_diag_fine;
 
 #endif

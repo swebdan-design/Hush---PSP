@@ -30,8 +30,9 @@ Modes: **PATROL** (12 missions), **DRIFT** (free flight), **SIGNAL CONSOLE** (th
 - **PSP FPU traps by default** (FCR31 = 0x00000E00 at boot: invalid, divide-by-zero, overflow enabled; PPSSPP ignores
   them). One NaN or x/0 on hardware = exception = console powers off. `main()` and the audio thread call
   `pspFpuSetEnable(0); pspFpuSetFS(1)` first thing; keep it that way in any new thread.
-- `hush_log.txt` (beside the EBOOT, `src/platform/psp/diag.c`) is the hardware crash log: boot stats, state changes,
-  per-second fps/audio load, stage markers for the first frames of gameplay, and the stage where FPU flags first appear.
+- `hush_log.txt` (beside the EBOOT, `src/platform/psp/diag.c`): boot stats, state changes, per-second fps/audio load,
+  and the stage where FPU flags first appear. Buffered in RAM, written only at loads, menus/pause and exit: **never write
+  the Memory Stick during gameplay** (each write costs tens of ms on hardware; a per-frame trace made the game unplayable).
 - Colours on the GE are ABGR (`RGBA()` macro in gfx.h does the packing). `sceGuDepthMask(GU_TRUE)` *disables* depth writes.
 
 ## Layout

@@ -1,9 +1,9 @@
 # HUSH release report
 
-- Date: 2026-11-12T17:10Z
-- Source commit: 8364219 (working tree had uncommitted changes)
+- Date: 2026-11-12T17:23Z
+- Source commit: bed968c (working tree had uncommitted changes)
 - Toolchain: psp-gcc (GCC) 15.2.0
-- EBOOT.PBP: 1247669 bytes
+- EBOOT.PBP: 1247301 bytes
 - Host tests: 187 checks passed, 0 failed
 
 ## Contents
@@ -63,15 +63,15 @@
 
 ## Archive sizes
 ```
-445718876 HUSH_Release_Package.zip
-42999626 HUSH_Source.zip
+445719126 HUSH_Release_Package.zip
+43006747 HUSH_Source.zip
 ```
 
 ## SHA-256
 ```
-9d269b95b9e4a284b13de8356f04d5ae0b545df185faa679c15082053e200738  HUSH_Release_Package.zip
-1dbe9b678b169642ba3e27238a9f5babe55296bceeb21764aa0e21f745ad835c  HUSH_Source.zip
-0c4a22b37b5ea3486bb39c8f9c4359e4d9456bd4d61dccd1c373a3b4f3d6fdc5  HUSH_by_Synth_Centric/PSP/GAME/HUSH/EBOOT.PBP
+dd3117df5ba9179ea2426c45d5978ae827fbf1ebb8a898529a11e2317f8227fb  HUSH_Release_Package.zip
+4f16ad8d549e74749aae2e8b658396802fb561d6fdeb2ff4e944b69508fb04b6  HUSH_Source.zip
+f9e559dfaf1bf92ba307d48f6a08f55494e91474e6b48450cee74861c3368fb5  HUSH_by_Synth_Centric/PSP/GAME/HUSH/EBOOT.PBP
 52567d6750f4435b29ed71583f850f10e92278cdf0efa5914a30f5410a217068  HUSH_by_Synth_Centric/audio/HUSH_01_Civic_Centre.wav
 27d5285ff6b1df2d468c24a403e81d832f6a27110ffefbb5cafcfa332b620e1b  HUSH_by_Synth_Centric/audio/HUSH_02_The_Works.wav
 bed71facdf9499c62ccd3abc5006878dbd07acd6324285cd3da4e4168f988047  HUSH_by_Synth_Centric/audio/HUSH_03_The_Stacks.wav

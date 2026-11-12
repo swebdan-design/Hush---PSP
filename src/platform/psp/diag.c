@@ -1,50 +1,54 @@
-/* HUSH — hardware diagnostics (see diag.h). */
+/* HUSH — hardware diagnostics (see diag.h).
+ * Lines collect in RAM and reach the Memory Stick only at quiet moments (menus, pause, every 30 s,
+ * or when the buffer fills): on real hardware each Memory Stick write costs tens of milliseconds,
+ * so writing during gameplay made the frame rate collapse. */
 #include "diag.h"
 #include <pspkernel.h>
-#include <pspge.h>
-#include <pspsysmem.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
 #include <pspfpu.h>
 
 #define LOG_PATH "hush_log.txt"
-#define LOG_MAX_BYTES (512 * 1024)   /* stop logging rather than fill the Memory Stick */
+#define LOG_MAX_BYTES (256 * 1024)   /* stop logging rather than fill the Memory Stick */
+#define BUF_BYTES (16 * 1024)
 
 int g_diag_fine;
-static int g_frames_left, g_frame, g_bytes;
+static int g_frame, g_bytes, g_fpu_reports;
+static char g_buf[BUF_BYTES];
+static int g_n;
 
-static void put(const char *s) {
-    int n = (int)strlen(s);
-    if (g_bytes + n > LOG_MAX_BYTES) return;
-    FILE *f = fopen(LOG_PATH, "a");
-    if (!f) return;
-    fputs(s, f);
-    fclose(f);   /* closing flushes to the Memory Stick: the line survives a crash */
-    g_bytes += n;
+void diag_flush(void) {
+    if (!g_n) return;
+    if (g_bytes + g_n <= LOG_MAX_BYTES) {
+        FILE *f = fopen(LOG_PATH, "a");
+        if (f) { fwrite(g_buf, 1, (size_t)g_n, f); fclose(f); g_bytes += g_n; }
+    }
+    g_n = 0;
 }
 
 void diag_init(void) {
     FILE *f = fopen(LOG_PATH, "w");   /* a fresh log for each run */
     if (f) fclose(f);
-    g_bytes = 0;
+    g_bytes = 0; g_n = 0;
 }
 
 void diag_log(const char *fmt, ...) {
-    char buf[256];
-    int k = snprintf(buf, sizeof(buf), "[%5d] ", g_frame);
+    char line[256];
+    int k = snprintf(line, sizeof(line), "[%5d] ", g_frame);
     va_list ap;
     va_start(ap, fmt);
-    vsnprintf(buf + k, sizeof(buf) - (size_t)k - 2, fmt, ap);
+    vsnprintf(line + k, sizeof(line) - (size_t)k - 2, fmt, ap);
     va_end(ap);
-    strcat(buf, "\n");
-    put(buf);
+    strcat(line, "\n");
+    int n = (int)strlen(line);
+    if (g_n + n > BUF_BYTES) return;   /* full: drop until the next flush */
+    memcpy(g_buf + g_n, line, (size_t)n);
+    g_n += n;
 }
 
-static int g_fpu_reports;
-
 void diag_mark(const char *stage) {
-    /* with traps off, the FPU still raises sticky flags: report where invalid/divide/overflow first happen */
+    /* traps are off, but the FPU still raises sticky flags: note where invalid/divide/overflow first happen */
     uint32_t f = pspFpuGetFlags() & (PSP_FPU_EXCEPTION_OVERFLOW | PSP_FPU_EXCEPTION_DIVBYZERO | PSP_FPU_EXCEPTION_INVALIDOP);
     if (f) {
         if (g_fpu_reports < 24) {
@@ -53,19 +57,8 @@ void diag_mark(const char *stage) {
         }
         pspFpuClearFlags(PSP_FPU_EXCEPTION_ALL);
     }
-    if (!g_diag_fine) return;
-    char buf[64];
-    snprintf(buf, sizeof(buf), "[%5d]   . %s\n", g_frame, stage);
-    put(buf);
 }
 
-void diag_arm(int frames, const char *why) {
-    if (frames > g_frames_left) g_frames_left = frames;
-    g_diag_fine = 1;
-    diag_log("trace on (%s)", why);
-}
+void diag_arm(int frames, const char *why) { (void)frames; (void)why; }
 
-void diag_frame(void) {
-    g_frame++;
-    if (g_frames_left > 0 && --g_frames_left == 0) { g_diag_fine = 0; diag_log("trace off"); }
-}
+void diag_frame(void) { g_frame++; }
