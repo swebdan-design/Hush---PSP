@@ -62,8 +62,9 @@ void rw_draw_crowd(const Crowd *cr, const Atmos *a, float time) {
         if (!p->active || dist > FAR_CUT || v3_dot(d, fwd) < -3.0f) continue;
         if (dist < NEAR_LOD) near_n++; else far_n++;
     }
-    if (near_n > MAX_NEAR) near_n = MAX_NEAR;
-    if (far_n > MAX_FAR) far_n = MAX_FAR;
+    static const int qn[4] = { 12, 20, 30, MAX_NEAR }, qf[4] = { 20, 40, 60, MAX_FAR };
+    if (near_n > qn[rw_quality()]) near_n = qn[rw_quality()];
+    if (far_n > qf[rw_quality()]) far_n = qf[rw_quality()];
     int near_left = near_n, far_left = far_n;
     if (!near_n && !far_n) return;
     int cap = near_n * (4 * 30 + 24) + far_n * (2 * 30 + 24);

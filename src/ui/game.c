@@ -213,7 +213,7 @@ void game_render(int with_hud) {
     rw_atmos(&a->world, &a->wx, &a->atmos);
     Camera *cam = &a->cam;
     rw_draw_sky(&a->world, &a->atmos, cam->eye, cam->target, cam->up, cam->fov);
-    gfx_set_camera(cam->eye, cam->target, cam->up, cam->fov, 1.0f, a->atmos.fog_far + 80.0f);
+    gfx_set_camera(cam->eye, cam->target, cam->up, cam->fov, 1.5f, a->atmos.fog_far + 80.0f);
     rw_draw_world(&a->world, &a->atmos, a->time);
     rw_draw_traffic(&a->world, &a->traffic, &a->atmos, a->time);
     rw_draw_crowd(&a->crowd, &a->atmos, a->time);

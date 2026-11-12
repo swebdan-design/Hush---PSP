@@ -107,6 +107,8 @@ void hush_music_render_s16(HushMusic *m, int16_t *out, int frames);
 const MusicViz *hush_music_viz(HushMusic *m);
 uint32_t hush_music_event_hash(HushMusic *m);
 uint32_t hush_music_event_count(HushMusic *m);
+/* lighter DSP (no chorus, no noise textures) for when the platform's audio CPU budget is tight */
+void hush_music_set_economy(HushMusic *m, int on);
 
 /* Presets */
 enum { PRESET_PATROL = 0, PRESET_PURSUIT, PRESET_DRIFT, PRESET_ARCHIVE, PRESET_RESERVOIR, PRESET_CHOIR, PRESET_NULLZONE, PRESET_BUILTIN_COUNT };

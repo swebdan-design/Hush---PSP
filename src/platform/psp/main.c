@@ -311,6 +311,15 @@ int main(int argc, char **argv) {
         a->state_t += dt;
         if (a->note_t > 0) a->note_t -= dt;
         a->fps_acc += dt; a->fps_frames++;
+        /* adaptive detail: drop quality when frames run long on this hardware, recover when stable */
+        a->frame_avg = a->frame_avg * 0.92f + dt * 0.08f;
+        if (a->prog.detail != DETAIL_AUTO) rw_set_quality(a->prog.detail == DETAIL_HIGH ? 3 : (a->prog.detail == DETAIL_MEDIUM ? 2 : 0));
+        else if (a->state == ST_PLAY || a->mode == MODE_ATTRACT) {
+            if (a->frame_avg > 0.0395f) { a->slow_t += dt; a->fast_t = 0; } else a->slow_t = 0;
+            if (a->frame_avg < 0.0350f) a->fast_t += dt; else a->fast_t = 0;
+            if (a->slow_t > 1.0f && rw_quality() > 0) { rw_set_quality(rw_quality() - 1); a->slow_t = 0; printf("HUSH: detail lowered to %d (frame %.1f ms)\n", rw_quality(), a->frame_avg * 1000.0f); }
+            if (a->fast_t > 10.0f && rw_quality() < 3) { rw_set_quality(rw_quality() + 1); a->fast_t = 0; }
+        }
         if (a->fps_acc >= 1.0f) { a->fps = (float)a->fps_frames / a->fps_acc; a->fps_acc = 0; a->fps_frames = 0; }
         input_update(&a->in, dt);
 #ifdef HUSH_AUTOTEST

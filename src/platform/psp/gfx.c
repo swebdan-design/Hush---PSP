@@ -27,7 +27,7 @@ static uint64_t g_frame_start;
 
 static Mat4 g_view, g_proj, g_viewproj;
 static V3 g_cam_eye, g_cam_fwd, g_cam_right, g_cam_up;
-static float g_cam_fov;
+static float g_cam_fov, g_cam_znear = 1.0f;
 
 static Tex g_font_tex[2], g_logo_tex, g_credit_tex;
 static const Tex *g_bound;
@@ -164,7 +164,7 @@ void gfx_set_camera(V3 eye, V3 target, V3 up, float fov_deg, float znear, float 
     V3 f = v3_norm(v3_sub(target, eye));
     V3 s = v3_norm(v3_cross(f, up));
     V3 u = v3_cross(s, f);
-    g_cam_eye = eye; g_cam_fwd = f; g_cam_right = s; g_cam_up = u; g_cam_fov = fov_deg;
+    g_cam_eye = eye; g_cam_fwd = f; g_cam_right = s; g_cam_up = u; g_cam_fov = fov_deg; g_cam_znear = znear;
     Mat4 v = mat_identity();
     v.m[0] = s.x; v.m[4] = s.y; v.m[8] = s.z;
     v.m[1] = u.x; v.m[5] = u.y; v.m[9] = u.z;
@@ -207,6 +207,7 @@ V3 gfx_cam_fwd(void) { return g_cam_fwd; }
 V3 gfx_cam_right(void) { return g_cam_right; }
 V3 gfx_cam_up(void) { return g_cam_up; }
 float gfx_cam_fov(void) { return g_cam_fov; }
+float gfx_cam_znear(void) { return g_cam_znear; }
 
 /* ---------------- state ---------------- */
 

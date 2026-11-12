@@ -135,6 +135,41 @@ static void gen_facade(int t) {
         }
         break;
     }
+    case TEX_ROOF: {
+        /* bitumen roof: membrane seams, vents, a few dim skylights, puddles */
+        for (int y = 0; y < FW; y++)
+            for (int x = 0; x < FW; x++) {
+                int v = 24 + (int)(hash2(x, y, 51) * 9.0f) + (int)(hash2(x / 6, y / 6, 52) * 6.0f);
+                if ((x % 42) == 0 || (y % 42) == 0) v -= 8;
+                px[y * FW + x] = p565(v, v, v + 2);
+            }
+        for (int k = 0; k < 7; k++) {
+            int x0 = rng_int(&r, FW - 12), y0 = rng_int(&r, FW - 12), s = 4 + rng_int(&r, 7);
+            int sky = rng_chance(&r, 0.35f);
+            for (int y = y0; y < y0 + s; y++)
+                for (int x = x0; x < x0 + s; x++) {
+                    int edge = y == y0 || x == x0 || y == y0 + s - 1 || x == x0 + s - 1;
+                    px[y * FW + x] = sky ? (edge ? p565(50, 50, 55) : p565(150, 160, 175)) : (edge ? p565(60, 60, 64) : p565(14, 14, 16));
+                }
+        }
+        for (int k = 0; k < 5; k++) {
+            int cx = rng_int(&r, FW), cy = rng_int(&r, FW), rr = 3 + rng_int(&r, 8);
+            for (int y = -rr; y <= rr; y++) for (int x = -rr; x <= rr; x++)
+                if (x * x + y * y * 3 < rr * rr) { int xx = (cx + x) & (FW - 1), yy = (cy + y) & (FW - 1); px[yy * FW + xx] = p565(40, 46, 58); }
+        }
+        break;
+    }
+    case TEX_PAVING: {
+        /* sidewalk paving slabs with a darker kerb line */
+        for (int y = 0; y < FW; y++)
+            for (int x = 0; x < FW; x++) {
+                int v = 46 + (int)(hash2(x, y, 61) * 10.0f) + (int)(hash2(x / 16, y / 16, 62) * 10.0f);
+                if ((x % 16) == 0 || (y % 16) == 0) v -= 14;
+                if (y < 4) v = 30;
+                px[y * FW + x] = p565(v, v, v + 4);
+            }
+        break;
+    }
     case TEX_METAL: {
         for (int y = 0; y < FW; y++)
             for (int x = 0; x < FW; x++) {

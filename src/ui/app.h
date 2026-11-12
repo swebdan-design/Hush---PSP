@@ -69,7 +69,7 @@ typedef struct {
     uint32_t chatter_n;
     int console_page, console_sel, console_overlay;
     int hud_override;        /* -1 = use options */
-    float fps, fps_acc;
+    float fps, fps_acc, frame_avg, slow_t, fast_t;
     int fps_frames;
     int autotest;
     float emp_flash;

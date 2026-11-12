@@ -25,6 +25,7 @@ static float g_cmin[CH_N * CH_N][3], g_cmax[CH_N * CH_N][3];
 static int g_writing, g_total;
 static V3 g_grade;
 static RenderStats g_stats;
+int g_quality = 3;   /* adaptive detail level, see rw_set_quality */
 
 const RenderStats *rw_stats(void) { return &g_stats; }
 
@@ -96,6 +97,21 @@ static void shop_band(int ch, V3 o, V3 h, float L, float y0, float H, float uoff
     }
 }
 
+/* horizontal surface split into <= 20 m cells; up = 1 faces +y */
+static void hgrid(int ch, int tex, float x0, float z0, float x1, float z1, float y, int up, uint32_t c) {
+    const float CELL = 20.0f, us = 1.0f / FACADE_TILE;
+    int nx = (int)ceilf((x1 - x0) / CELL), nz = (int)ceilf((z1 - z0) / CELL);
+    if (nx < 1) nx = 1;
+    if (nz < 1) nz = 1;
+    float dx = (x1 - x0) / (float)nx, dz = (z1 - z0) / (float)nz;
+    for (int j = 0; j < nz; j++)
+        for (int i = 0; i < nx; i++) {
+            float a0 = x0 + dx * (float)i, a1 = a0 + dx, b0 = z0 + dz * (float)j, b1 = b0 + dz;
+            if (up) quad(ch, tex, v3(a0, y, b1), v3(a1, y, b1), v3(a1, y, b0), v3(a0, y, b0), a0 * us, b1 * us, a1 * us, b0 * us, c, c, c, c);
+            else quad(ch, tex, v3(a0, y, b0), v3(a1, y, b0), v3(a1, y, b1), v3(a0, y, b1), a0 * us, b0 * us, a1 * us, b1 * us, c, c, c, c);
+        }
+}
+
 static void tess_box(const World *w, const Box *bx) {
     const Aabb *b = &bx->b;
     int ch = chunk_of((b->x0 + b->x1) * 0.5f, (b->z0 + b->z1) * 0.5f);
@@ -107,7 +123,7 @@ static void tess_box(const World *w, const Box *bx) {
         if (b->y1 > g_cmax[ch][1]) g_cmax[ch][1] = b->y1;
         if (b->z1 > g_cmax[ch][2]) g_cmax[ch][2] = b->z1;
     }
-    int tex = bx->tex;
+    int tex = bx->kind == BOX_SIDEWALK ? TEX_PAVING : bx->tex;
     float tint = (float)bx->tint / 255.0f;
     float uoff = (float)(bx->tint % 8) * 0.125f;
     float g = w->ground_y;
@@ -128,17 +144,15 @@ static void tess_box(const World *w, const Box *bx) {
     wall(ch, tex, v3(b->x0, 0, b->z0), v3(0, 0, 1), b->z1 - b->z0, y0, y1, v3(-1, 0, 0), g, tint, uoff + 0.5f);
     wall(ch, tex, v3(b->x0, 0, b->z1), v3(1, 0, 0), b->x1 - b->x0, y0, y1, v3(0, 0, 1), g, tint, uoff + 0.25f);
     wall(ch, tex, v3(b->x1, 0, b->z0), v3(-1, 0, 0), b->x1 - b->x0, y0, y1, v3(0, 0, -1), g, tint, uoff + 0.75f);
-    /* roof (and an underside for elevated structures) */
-    int rt = (tex == TEX_GARDEN) ? TEX_GARDEN : TEX_CONCRETE;
+    /* roof (and an underside for elevated structures), cut into <= 20 m cells: the GE rejects any
+     * triangle with a vertex far outside the screen, so long decks must never be one giant quad */
+    int rt = tex == TEX_GARDEN ? TEX_GARDEN : (bx->kind == BOX_SIDEWALK ? TEX_PAVING : TEX_ROOF);
     uint32_t rc = shade(v3(0, 1, 0), y1, g, tint, 1);
-    float us = 1.0f / FACADE_TILE;
-    quad(ch, rt, v3(b->x0, y1, b->z1), v3(b->x1, y1, b->z1), v3(b->x1, y1, b->z0), v3(b->x0, y1, b->z0),
-         b->x0 * us, b->z1 * us, b->x1 * us, b->z0 * us, rc, rc, rc, rc);
+    if (bx->kind == BOX_SIDEWALK) rc = col_scale(RGBA(255, 255, 255, 255), 0.62f);
+    hgrid(ch, rt, b->x0, b->z0, b->x1, b->z1, y1, 1, rc);
     if (b->y0 > g + 2.0f) {
-        uint32_t uc = shade(v3(0, -1, 0), b->y0, g, tint, 1);
-        uc = col_scale(uc, 0.6f);
-        quad(ch, rt, v3(b->x0, b->y0, b->z0), v3(b->x1, b->y0, b->z0), v3(b->x1, b->y0, b->z1), v3(b->x0, b->y0, b->z1),
-             b->x0 * us, b->z0 * us, b->x1 * us, b->z1 * us, uc, uc, uc, uc);
+        uint32_t uc = col_scale(shade(v3(0, -1, 0), b->y0, g, tint, 1), 0.6f);
+        hgrid(ch, rt, b->x0, b->z0, b->x1, b->z1, b->y0, 0, uc);
     }
 }
 
@@ -178,9 +192,42 @@ static void tess_cyl(const World *w, const Cyl *c) {
     }
 }
 
+/* Per-object vertex ranges, so geometry near the camera can be re-checked against the guard band. */
+typedef struct { int start, count; uint8_t tex; float mn[3], mx[3]; } Range;
+#define MAX_RANGES 9000
+static Range g_ranges[MAX_RANGES];
+static int g_nranges;
+
+static void rec_begin(int ch, int *snap) { for (int t = 0; t < TEX_COUNT; t++) snap[t] = g_cursor[ch][t]; }
+static void rec_end(int ch, const int *snap, float x0, float y0, float z0, float x1, float y1, float z1) {
+    if (!g_writing) return;
+    for (int t = 0; t < TEX_COUNT; t++) {
+        int n = g_cursor[ch][t] - snap[t];
+        if (n <= 0 || g_nranges >= MAX_RANGES || snap[t] + n > POOL_VERTS) continue;
+        Range *r = &g_ranges[g_nranges++];
+        r->start = snap[t]; r->count = n; r->tex = (uint8_t)t;
+        r->mn[0] = x0; r->mn[1] = y0; r->mn[2] = z0; r->mx[0] = x1; r->mx[1] = y1; r->mx[2] = z1;
+    }
+}
+
 static void tessellate(const World *w) {
-    for (int i = 0; i < w->n_boxes; i++) tess_box(w, &w->boxes[i]);
-    for (int i = 0; i < w->n_cyls; i++) tess_cyl(w, &w->cyls[i]);
+    int snap[TEX_COUNT];
+    g_nranges = 0;
+    for (int i = 0; i < w->n_boxes; i++) {
+        const Aabb *b = &w->boxes[i].b;
+        int ch = chunk_of((b->x0 + b->x1) * 0.5f, (b->z0 + b->z1) * 0.5f);
+        rec_begin(ch, snap);
+        tess_box(w, &w->boxes[i]);
+        rec_end(ch, snap, b->x0, b->y0, b->z0, b->x1, b->y1, b->z1);
+    }
+    for (int i = 0; i < w->n_cyls; i++) {
+        const Cyl *c = &w->cyls[i];
+        int ch = chunk_of(c->x, c->z);
+        float r = h_maxf(c->r0, c->r1);
+        rec_begin(ch, snap);
+        tess_cyl(w, c);
+        rec_end(ch, snap, c->x - r, c->y0, c->z - r, c->x + r, c->y1, c->z + r);
+    }
 }
 
 void rw_build(const World *w) {
@@ -230,21 +277,63 @@ void rw_atmos(const World *w, const Weather *wx, Atmos *a) {
     a->sky_horizon = h;
     a->fog_color = h;
     weather_fog(wx, w->id, &a->fog_near, &a->fog_far);
+    static const float draw[4] = { 0.62f, 0.75f, 0.88f, 1.0f };   /* adaptive detail: shorter draw distance */
+    a->fog_far *= draw[g_quality];
+    a->fog_near *= draw[g_quality];
 }
 
 /* ---------------- sky & skyline ---------------- */
 
+/* ---------------- guard-band clipping ----------------
+ * The PSP GE discards a whole triangle if any vertex lands outside its 4096 x 4096 drawing area
+ * (+-2048 px around our viewport centre), after near-plane clipping. Emulators often don't, so
+ * this is invisible on PC but loses ground tiles and long decks on hardware. Risky triangles are
+ * clipped here, on the CPU, against planes safely inside that area. */
+/* GCC 15 reports a false maybe-uninitialized through the inlined clipper's buffer swaps */
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#include "guardclip.h"
+#define CLIP_MAX 9000
+static VtxTCP __attribute__((aligned(16))) g_clip[CLIP_MAX];
+static int g_nclip;
+static GuardClip g_gc;
+
+static void clip_setup(float znear) {
+    float tv = tanf(gfx_cam_fov() * 0.5f * H_PI / 180.0f);
+    gc_setup(&g_gc, gfx_cam_pos(), gfx_cam_fwd(), gfx_cam_right(), gfx_cam_up(), tv, (float)SCR_W, (float)SCR_H, znear);
+}
+
+static int clip_tri(const VtxTCP *a, const VtxTCP *b, const VtxTCP *c) {
+    return gc_clip_tri(&g_gc, (const GcVtx *)a, (const GcVtx *)b, (const GcVtx *)c, (GcVtx *)g_clip, &g_nclip, CLIP_MAX);
+}
+
+/* dynamic geometry: safe triangles go straight into the batch, risky ones are clipped */
+static void dyn_tri(const VtxTCP *a, const VtxTCP *b, const VtxTCP *c) {
+    if (clip_tri(a, b, c) && g_nclip + 3 <= CLIP_MAX) { g_clip[g_nclip++] = *a; g_clip[g_nclip++] = *b; g_clip[g_nclip++] = *c; }
+}
+static void dyn_quad(const VtxTCP *q) { dyn_tri(&q[0], &q[1], &q[2]); dyn_tri(&q[0], &q[2], &q[3]); }
+
+static void clip_flush(void) {
+    if (!g_nclip) return;
+    VtxTCP *v = (VtxTCP *)sceGuGetMemory(g_nclip * (int)sizeof(VtxTCP));
+    memcpy(v, g_clip, sizeof(VtxTCP) * (size_t)g_nclip);
+    sceGuDrawArray(GU_TRIANGLES, VT_TCP | GU_TRANSFORM_3D, g_nclip, 0, v);
+    g_stats.tris_drawn += g_nclip / 3;
+    g_nclip = 0;
+}
+
+void rw_set_quality(int q) { g_quality = h_clampi(q, 0, 3); }
+int rw_quality(void) { return g_quality; }
+
 static void skyline_ring(V3 eye, float radius, float ybot, float ytop, float uoff, uint32_t col) {
-    const int N = 28;
-    VtxTCP *v = (VtxTCP *)sceGuGetMemory((N + 1) * 2 * (int)sizeof(VtxTCP));
-    for (int i = 0; i <= N; i++) {
-        float a = (float)i * H_TAU / (float)N;
-        float x = eye.x + cosf(a) * radius, z = eye.z + sinf(a) * radius;
-        float u = uoff + (float)i * 4.0f / (float)N;
-        v[2 * i].u = u; v[2 * i].v = 1.0f; v[2 * i].color = col; v[2 * i].x = x; v[2 * i].y = ybot; v[2 * i].z = z;
-        v[2 * i + 1].u = u; v[2 * i + 1].v = 0.0f; v[2 * i + 1].color = col; v[2 * i + 1].x = x; v[2 * i + 1].y = ytop; v[2 * i + 1].z = z;
+    const int N = 48;
+    for (int i = 0; i < N; i++) {
+        float a0 = (float)i * H_TAU / (float)N, a1 = (float)(i + 1) * H_TAU / (float)N;
+        float x0 = eye.x + cosf(a0) * radius, z0 = eye.z + sinf(a0) * radius, x1 = eye.x + cosf(a1) * radius, z1 = eye.z + sinf(a1) * radius;
+        float u0 = uoff + (float)i * 4.0f / (float)N, u1 = uoff + (float)(i + 1) * 4.0f / (float)N;
+        VtxTCP q[4] = { {u0, 1.0f, col, x0, ybot, z0}, {u1, 1.0f, col, x1, ybot, z1}, {u1, 0.0f, col, x1, ytop, z1}, {u0, 0.0f, col, x0, ytop, z0} };
+        dyn_quad(q);
     }
-    sceGuDrawArray(GU_TRIANGLE_STRIP, VT_TCP | GU_TRANSFORM_3D, (N + 1) * 2, 0, v);
+    clip_flush();
 }
 
 void rw_draw_sky(const World *w, const Atmos *a, V3 eye, V3 target, V3 up, float fov) {
@@ -253,6 +342,7 @@ void rw_draw_sky(const World *w, const Atmos *a, V3 eye, V3 target, V3 up, float
     gfx_rect(0, SCR_H * 0.62f - 0.5f, SCR_W, SCR_H * 0.4f, a->sky_horizon);
     /* the distant city: two silhouette rings beyond the fog, never reachable */
     gfx_set_camera(eye, target, up, fov, 2.0f, 2600.0f);
+    clip_setup(2.0f);
     sceGuDisable(GU_DEPTH_TEST);
     sceGuDisable(GU_CULL_FACE);
     gfx_blend_alpha();
@@ -278,19 +368,23 @@ static int sphere_visible(V3 c, float r, float far_d) {
 }
 
 static void ground_plane(const World *w, const Atmos *a, float y, const Tex *t, uint32_t col, float uvscale, float uoff, float voff) {
-    const int N = 24;   /* ~77 m tiles: smaller triangles are safer against GE near-plane rejection */
+    const int N = 24;   /* ~77 m tiles, each passed through the guard-band clipper */
     float s = 2.0f * (WORLD_HALF + 300.0f) / (float)N, o = -(WORLD_HALF + 300.0f);
+    float far2 = (a->fog_far + 120.0f) * (a->fog_far + 120.0f);
+    V3 eye = gfx_cam_pos();
     gfx_bind(t, 1, 1);
-    for (int j = 0; j < N; j++) {
-        VtxTCP *v = (VtxTCP *)sceGuGetMemory((N + 1) * 2 * (int)sizeof(VtxTCP));
-        for (int i = 0; i <= N; i++) {
-            float x = o + s * (float)i, z0 = o + s * (float)j, z1 = z0 + s;
-            v[2 * i].u = x * uvscale + uoff; v[2 * i].v = z1 * uvscale + voff; v[2 * i].color = col; v[2 * i].x = x; v[2 * i].y = y; v[2 * i].z = z1;
-            v[2 * i + 1].u = x * uvscale + uoff; v[2 * i + 1].v = z0 * uvscale + voff; v[2 * i + 1].color = col; v[2 * i + 1].x = x; v[2 * i + 1].y = y; v[2 * i + 1].z = z0;
+    for (int j = 0; j < N; j++)
+        for (int i = 0; i < N; i++) {
+            float x0 = o + s * (float)i, x1 = x0 + s, z0 = o + s * (float)j, z1 = z0 + s;
+            float cx = h_clampf(eye.x, x0, x1) - eye.x, cz = h_clampf(eye.z, z0, z1) - eye.z;
+            if (cx * cx + cz * cz > far2) continue;   /* fully fogged */
+            VtxTCP q[4] = { {x0 * uvscale + uoff, z1 * uvscale + voff, col, x0, y, z1}, {x1 * uvscale + uoff, z1 * uvscale + voff, col, x1, y, z1},
+                            {x1 * uvscale + uoff, z0 * uvscale + voff, col, x1, y, z0}, {x0 * uvscale + uoff, z0 * uvscale + voff, col, x0, y, z0} };
+            dyn_quad(q);
+            if (g_nclip > CLIP_MAX - 64) clip_flush();
         }
-        sceGuDrawArray(GU_TRIANGLE_STRIP, VT_TCP | GU_TRANSFORM_3D, (N + 1) * 2, 0, v);
-    }
-    (void)w; (void)a;
+    clip_flush();
+    (void)w;
 }
 
 static void draw_neon(const World *w, const Atmos *a, float time);
@@ -298,6 +392,7 @@ static void draw_lane_marks(const World *w, const Atmos *a);
 
 void rw_draw_world(const World *w, const Atmos *a, float time) {
     float far_d = a->fog_far + 40.0f;
+    clip_setup(gfx_cam_znear());
     g_tanv = tanf(gfx_cam_fov() * 0.5f * H_PI / 180.0f);
     g_tanh = g_tanv * (float)SCR_W / (float)SCR_H;
     sceGuEnable(GU_DEPTH_TEST);
@@ -319,6 +414,18 @@ void rw_draw_world(const World *w, const Atmos *a, float time) {
         vis[c] = sphere_visible(ctr, v3_len(ext), far_d);
         if (vis[c]) g_stats.chunks_drawn++;
     }
+    /* objects close to the camera: their risky triangles get clipped replacements */
+    static short near_r[512];
+    int n_near = 0;
+    {
+        V3 e = gfx_cam_pos();
+        for (int i = 0; i < g_nranges && n_near < 512; i++) {
+            const Range *r = &g_ranges[i];
+            float dx = h_clampf(e.x, r->mn[0], r->mx[0]) - e.x, dy = h_clampf(e.y, r->mn[1], r->mx[1]) - e.y, dz = h_clampf(e.z, r->mn[2], r->mx[2]) - e.z;
+            if (dx * dx + dy * dy + dz * dz < 55.0f * 55.0f) near_r[n_near++] = (short)i;
+        }
+    }
+    g_stats.clipped = 0;
     for (int t = 0; t < TEX_COUNT; t++) {
         gfx_bind(&g_tex.facade[t], 1, 1);
         for (int c = 0; c < CH_N * CH_N; c++) {
@@ -331,6 +438,14 @@ void rw_draw_world(const World *w, const Atmos *a, float time) {
                 g_stats.tris_drawn += k / 3;
             }
         }
+        for (int k = 0; k < n_near; k++) {
+            const Range *r = &g_ranges[near_r[k]];
+            if (r->tex != t) continue;
+            for (int v = r->start; v + 2 < r->start + r->count; v += 3) clip_tri(&g_pool[v], &g_pool[v + 1], &g_pool[v + 2]);
+            if (g_nclip > CLIP_MAX - 200) { g_stats.clipped += g_nclip / 3; clip_flush(); }
+        }
+        g_stats.clipped += g_nclip / 3;
+        clip_flush();
     }
     sceGuDisable(GU_CULL_FACE);
     sceGuEnable(GU_BLEND);
@@ -346,12 +461,12 @@ void rw_draw_world(const World *w, const Atmos *a, float time) {
         V3 eye = gfx_cam_pos();
         for (int pass = 0; pass < 2; pass++) {
             gfx_bind(pass == 0 ? &g_tex.ads : &g_tex.signs, 1, 0);
-            VtxTCP *v = (VtxTCP *)sceGuGetMemory(w->n_ads * 6 * (int)sizeof(VtxTCP));
-            int k = 0;
+            static const float sign_dist[4] = { 140.0f, 190.0f, 250.0f, 300.0f };
+            float sd = sign_dist[g_quality];
             for (int i = 0; i < w->n_ads; i++) {
                 const Ad *ad = &w->ads[i];
                 if ((ad->sheet != 0) != (pass == 1)) continue;
-                if (ad->sheet && v3_len2(v3_sub(ad->p, eye)) > 300.0f * 300.0f) continue;
+                if (ad->sheet && v3_len2(v3_sub(ad->p, eye)) > sd * sd) continue;
                 if (!sphere_visible(ad->p, h_maxf(ad->w, ad->h), far_d)) continue;
                 float fl = 1.0f;
                 if (ad->flicker) { float ph = fmodf(time * 1.7f + (float)i * 0.37f, 7.0f); fl = (ph > 6.6f && ph < 6.75f) ? 0.15f : (ph > 6.8f && ph < 6.85f ? 0.3f : 1.0f); }
@@ -364,9 +479,10 @@ void rw_draw_world(const World *w, const Atmos *a, float time) {
                 V3 A = v3_madd(ad->p, hdir, -ad->w * 0.5f), B = v3_madd(ad->p, hdir, ad->w * 0.5f);
                 V3 Au = A, Bu = B; A.y -= ad->h * 0.5f; B.y -= ad->h * 0.5f; Au.y += ad->h * 0.5f; Bu.y += ad->h * 0.5f;
                 VtxTCP q[4] = { {u0, v1, c, A.x, A.y, A.z}, {u1, v1, c, B.x, B.y, B.z}, {u1, v0, c, Bu.x, Bu.y, Bu.z}, {u0, v0, c, Au.x, Au.y, Au.z} };
-                v[k++] = q[0]; v[k++] = q[1]; v[k++] = q[2]; v[k++] = q[0]; v[k++] = q[2]; v[k++] = q[3];
+                dyn_quad(q);
+                if (g_nclip > CLIP_MAX - 64) clip_flush();
             }
-            if (k) sceGuDrawArray(GU_TRIANGLES, VT_TCP | GU_TRANSFORM_3D, k, 0, v);
+            clip_flush();
         }
     }
     draw_neon(w, a, time);
@@ -514,7 +630,8 @@ static FLight g_fl[MAX_FRAME_LIGHTS];
 static int g_nfl;
 
 void rw_light(V3 p, float size, uint32_t color, float alpha) {
-    if (g_nfl >= MAX_FRAME_LIGHTS || alpha <= 0.01f) return;
+    static const int cap[4] = { 380, 600, 850, MAX_FRAME_LIGHTS };
+    if (g_nfl >= cap[g_quality] || alpha <= 0.01f) return;
     FLight *l = &g_fl[g_nfl++];
     l->p = p; l->size = size; l->color = color; l->alpha = alpha;
 }
@@ -550,7 +667,7 @@ void rw_draw_world_lights(const World *w, const Atmos *a, float time, float wet)
     V3 eye = gfx_cam_pos();
     int water = w->water_y > w->ground_y;
     /* rain-slick streets mirror the neon: street-level lights reflect in the asphalt */
-    int street_refl = !water && wet > 0.12f && eye.y - w->ground_y < 140.0f;
+    int street_refl = !water && wet > 0.12f && eye.y - w->ground_y < 140.0f && g_quality >= 2;
     for (int i = 0; i < w->n_lights; i++) {
         const Light *l = &w->lights[i];
         float d2 = v3_len2(v3_sub(l->p, eye));
@@ -568,7 +685,9 @@ void rw_flush_lights(const World *w, const Atmos *a) {
     (void)w;
     if (!g_nfl) return;
     float far_d = a->fog_far * 1.45f;
-    V3 eye = gfx_cam_pos(), rt = gfx_cam_right(), up = gfx_cam_up();
+    V3 eye = gfx_cam_pos(), rt = gfx_cam_right(), up = gfx_cam_up(), fwd = gfx_cam_fwd();
+    g_tanv = tanf(gfx_cam_fov() * 0.5f * H_PI / 180.0f);
+    g_tanh = g_tanv * (float)SCR_W / (float)SCR_H;
     sceGuEnable(GU_DEPTH_TEST);
     sceGuDepthMask(GU_TRUE);
     sceGuDisable(GU_FOG);
@@ -580,12 +699,16 @@ void rw_flush_lights(const World *w, const Atmos *a) {
     for (int i = 0; i < g_nfl; i++) {
         const FLight *l = &g_fl[i];
         V3 d = v3_sub(l->p, eye);
-        float z = v3_dot(d, gfx_cam_fwd());
+        float z = v3_dot(d, fwd);
         if (z < 0.5f) continue;
         float dist = v3_len(d);
         if (dist > far_d) continue;
-        /* lights hold their apparent size with distance a little, like bloom; fade into the fog */
+        /* frustum: skip sprites entirely off screen */
         float s = l->size * (1.0f + dist / 160.0f);
+        if (h_absf(v3_dot(d, rt)) > z * g_tanh + s || h_absf(v3_dot(d, up)) > z * g_tanv + s) continue;
+        /* fill-rate cap: a glow never covers more than ~1/6 of the screen height, however close */
+        float smax = z * g_tanv * 0.16f;
+        if (s > smax) s = smax;
         float fade = 1.0f - h_smoothstep(far_d * 0.55f, far_d, dist);
         uint32_t c = col_alpha(l->color, l->alpha * fade);
         V3 r = v3_scale(rt, s), u = v3_scale(up, s);
@@ -665,7 +788,8 @@ void rw_draw_effects(const World *w, const Weather *wx, const Atmos *a, float ti
     if (k) sceGuDrawArray(GU_TRIANGLES, VT_TCP | GU_TRANSFORM_3D, k, 0, v);
 
     /* rain: streaks in a box that travels with the camera */
-    int n = (int)(wx->rain * (float)RAIN_MAX * (0.35f + 0.22f * (float)rain_density));
+    static const float rq[4] = { 0.4f, 0.6f, 0.8f, 1.0f };
+    int n = (int)(wx->rain * (float)RAIN_MAX * (0.35f + 0.22f * (float)rain_density) * rq[g_quality]);
     if (n > RAIN_MAX) n = RAIN_MAX;
     if (!g_rain_init) { for (int i = 0; i < RAIN_MAX; i++) g_rain[i] = v3((rr01() - 0.5f) * 80, (rr01() - 0.5f) * 60, (rr01() - 0.5f) * 80); g_rain_init = 1; }
     if (n > 8) {

@@ -247,6 +247,7 @@ static void render_block(HushMusic *m, float *outL, float *outR, int n) {
         if (i == V_TEX0) g *= 0.05f + 0.85f * c->s_rain + 0.1f * c->s_fog;
         else if (i > V_TEX0) g *= c->pb.hum * (0.45f + 0.55f * h_minf(low, 1.0f)) + 0.05f * c->s_traffic;
         float *bl, *br;
+        if (m->economy && i >= V_TEX0) { if (v->released) v->active = 0; continue; }   /* economy: no noise textures */
         if (v->bus == BUS_PAD) { bl = m->padL; br = m->padR; }
         else if (v->bus == BUS_RADIO) { bl = m->radL; br = m->radR; }
         else { bl = m->mainL; br = m->mainR; }
@@ -262,7 +263,7 @@ static void render_block(HushMusic *m, float *outL, float *outR, int n) {
     }
     if ((uint32_t)nact > c->stats.max_voices) c->stats.max_voices = (uint32_t)nact;
 
-    chorus_process(&m->chorus, m->padL, m->padR, 0.12f + 0.4f * c->s_motion, 0.4f + 0.5f * c->P.mod_depth, 0.42f, n);
+    if (!m->economy) chorus_process(&m->chorus, m->padL, m->padR, 0.12f + 0.4f * c->s_motion, 0.4f + 0.5f * c->P.mod_depth, 0.42f, n);
     radio_process(&m->radio, m->radL, m->radR, m->g_radio, n);
 
     for (int i = 0; i < n; i++) {
@@ -359,4 +360,5 @@ void hush_music_render_s16(HushMusic *m, int16_t *out, int frames) {
 const MusicViz *hush_music_viz(HushMusic *m) { return &m->viz; }
 uint32_t hush_music_event_hash(HushMusic *m) { return m->c.event_hash; }
 uint32_t hush_music_event_count(HushMusic *m) { return m->c.event_count; }
+void hush_music_set_economy(HushMusic *m, int on) { m->economy = on; }
 void hush_music_stats(HushMusic *m, MusicStats *out) { *out = m->c.stats; }

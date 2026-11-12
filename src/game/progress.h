@@ -22,6 +22,7 @@
 
 enum { HUD_FULL = 0, HUD_MINIMAL, HUD_OFF, HUD_COUNT };
 enum { CTL_FACE = 0, CTL_CLASSIC, CTL_COUNT };
+enum { DETAIL_AUTO = 0, DETAIL_HIGH, DETAIL_MEDIUM, DETAIL_LOW, DETAIL_COUNT };
 
 typedef struct {
     uint32_t missions_done;      /* bit per mission */
@@ -43,6 +44,7 @@ typedef struct {
     uint32_t play_seconds;
     uint8_t control_scheme;      /* CTL_FACE (default) or CTL_CLASSIC; appended in v1 saves, optional on load */
     uint8_t story_flags;         /* bit0: prologue seen. Appended, optional on load */
+    uint8_t detail;              /* DETAIL_AUTO (default), HIGH, MEDIUM, LOW. Appended, optional */
 } Progress;
 
 void progress_defaults(Progress *p);

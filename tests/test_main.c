@@ -10,6 +10,7 @@
 #include "../src/game/env_bridge.h"
 #include "../src/game/autopilot.h"
 #include "../src/game/crowd.h"
+#include "../src/render/guardclip.h"
 #include "../src/audio/dsp.h"
 #include "../src/core/rng.h"
 #include <stdio.h>
@@ -366,6 +367,63 @@ static void test_crowd(void) {
     CHECK(c.n == 0, "nobody walks the flooded Undertow");
 }
 
+/* Model of the PSP GE rule: near-plane clip, then reject the primitive if any vertex
+ * lands more than 2048 px from the viewport centre. Returns 1 if the GE would draw it. */
+static int ge_accepts(const GuardClip *g, const GcVtx *t, float fx, float fy, float znear) {
+    GcCV c[3];
+    for (int i = 0; i < 3; i++) gc_cvx(g, &c[i], &t[i]);
+    /* vertices in front of the near plane are checked directly; edges crossing it produce
+     * new vertices on the plane, which are checked too */
+    for (int i = 0; i < 3; i++) {
+        const GcCV *A = &c[i], *B = &c[(i + 1) % 3];
+        if (A->cz >= znear) { if (fabsf(A->cx / A->cz * fx) > 2048.0f || fabsf(A->cy / A->cz * fy) > 2048.0f) return 0; }
+        if ((A->cz >= znear) != (B->cz >= znear)) {
+            float t2 = (znear - A->cz) / (B->cz - A->cz);
+            float x = A->cx + (B->cx - A->cx) * t2, y = A->cy + (B->cy - A->cy) * t2;
+            if (fabsf(x / znear * fx) > 2048.0f || fabsf(y / znear * fy) > 2048.0f) return 0;
+        }
+    }
+    return 1;
+}
+
+static void test_guardclip(void) {
+    printf("[guardclip] risky triangles are clipped so the PSP GE accepts them\n");
+    const float tv = tanf(62.0f * 0.5f * H_PI / 180.0f), znear = 1.5f;
+    const float fy = 136.0f / tv, fx = 240.0f / (tv * 480.0f / 272.0f);
+    GuardClip g;
+    gc_setup(&g, v3(0, 5, 0), v3(0, 0, 1), v3(-1, 0, 0), v3(0, 1, 0), tv, 480.0f, 272.0f, znear);
+    /* the reported bug: a 77 m ground tile under a low camera is rejected outright */
+    GcVtx tile[3] = { {0, 0, 0xffffffffu, -40, 0, -20}, {0, 0, 0xffffffffu, 40, 0, -20}, {0, 0, 0xffffffffu, 40, 0, 57} };
+    CHECK(!ge_accepts(&g, tile, fx, fy, znear), "unclipped ground tile would be rejected by the GE (reproduces the bug)");
+    static GcVtx out[4096];
+    int n = 0;
+    CHECK(gc_clip_tri(&g, &tile[0], &tile[1], &tile[2], out, &n, 4096) == 0 && n >= 3, "tile is clipped into %d vertices", n);
+    int all_ok = 1;
+    for (int i = 0; i < n; i += 3) all_ok &= ge_accepts(&g, &out[i], fx, fy, znear);
+    CHECK(all_ok, "every clipped triangle is accepted by the GE");
+    /* random fuzz: risky triangles near the camera */
+    uint32_t s = 12345; int rejected_after = 0, total = 0, lost_visible = 0;
+    for (int k = 0; k < 4000; k++) {
+        GcVtx t[3];
+        for (int i = 0; i < 3; i++) {
+            s ^= s << 13; s ^= s >> 17; s ^= s << 5; float a = (float)(s % 2000) / 10.0f - 100.0f;
+            s ^= s << 13; s ^= s >> 17; s ^= s << 5; float b = (float)(s % 2000) / 50.0f - 15.0f;
+            s ^= s << 13; s ^= s >> 17; s ^= s << 5; float c = (float)(s % 2000) / 10.0f - 60.0f;
+            t[i].x = a; t[i].y = b; t[i].z = c; t[i].u = t[i].v = 0; t[i].color = 0xff808080u;
+        }
+        n = 0;
+        if (gc_clip_tri(&g, &t[0], &t[1], &t[2], out, &n, 4096)) { if (!ge_accepts(&g, t, fx, fy, znear)) rejected_after++; total++; continue; }
+        for (int i = 0; i < n; i += 3) { total++; if (!ge_accepts(&g, &out[i], fx, fy, znear)) rejected_after++; }
+        /* a point of the triangle that is on screen must still be covered: test the centroid */
+        GcCV cc; GcVtx cen = { 0, 0, 0, (t[0].x + t[1].x + t[2].x) / 3, (t[0].y + t[1].y + t[2].y) / 3, (t[0].z + t[1].z + t[2].z) / 3 };
+        gc_cvx(&g, &cc, &cen);
+        int on_screen = cc.cz > znear * 1.2f && fabsf(cc.cx / cc.cz * fx) < 240 && fabsf(cc.cy / cc.cz * fy) < 136;
+        if (on_screen && n == 0) lost_visible++;
+    }
+    CHECK(rejected_after == 0, "fuzz: 0 of %d emitted triangles would be rejected (%d)", total, rejected_after);
+    CHECK(lost_visible == 0, "fuzz: no on-screen triangle disappears (%d lost)", lost_visible);
+}
+
 static void test_env_bridge(void) {
     printf("[bridge] world drives music inputs\n");
     World *w = &g_world;
@@ -392,6 +450,7 @@ int main(int argc, char **argv) {
     test_flight();
     test_env_bridge();
     test_crowd();
+    test_guardclip();
     test_missions();
     test_audio();
     if (!quick) test_audio_long();

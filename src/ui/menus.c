@@ -453,7 +453,7 @@ static void drift_render(void) {
 static void options_update(void) {
     App *a = &g_app;
     Progress *p = &a->prog;
-    list_nav(&a->menu_sel, 10);
+    list_nav(&a->menu_sel, 11);
     int d = lr();
     if (back()) { a->menu_sel = 4; app_set_state(ST_MENU); return; }
     if (d) {
@@ -466,13 +466,14 @@ static void options_update(void) {
         case 5: p->invert_lift ^= 1; break;
         case 6: p->rain_density = (uint8_t)h_clampi(p->rain_density + d, 0, 3); break;
         case 7: p->show_fps ^= 1; break;
+        case 9: p->detail = (uint8_t)((p->detail + DETAIL_COUNT + d) % DETAIL_COUNT); break;
         case 8: p->paint = (uint8_t)((p->paint + 1) % 2); if (!(p->paints & (1u << p->paint))) { p->paint = 0; app_note("COMPLETE RECOVERY TO UNLOCK RAINWATER"); } break;
         default: break;
         }
         app_push_music();
     }
     if (ok()) {
-        if (a->menu_sel == 9) { app_set_state(ST_CONTROLS); return; }
+        if (a->menu_sel == 10) { app_set_state(ST_CONTROLS); return; }
         app_save();
     }
 }
@@ -486,13 +487,14 @@ static void options_render(void) {
     static const char *const paints[2] = { "MSA STANDARD", "RAINWATER" };
     gfx_rect(0, 0, SCR_W, SCR_H, RGBA(0, 0, 0, 160));
     ui_header("OPTIONS", "X: SAVE SETTINGS");
-    ui_panel(90, 42, 300, 194, 1.0f);
+    ui_panel(90, 40, 300, 198, 1.0f);
     char mv[8], sv[8];
     snprintf(mv, sizeof(mv), "%d", p->music_vol); snprintf(sv, sizeof(sv), "%d", p->sfx_vol);
     static const char *const schemes[CTL_COUNT] = { "FACE BUTTONS", "CLASSIC" };
-    const char *labels[10] = { "MUSIC VOLUME", "EFFECTS VOLUME", "HUD", "CONTROL SCHEME", "DEFAULT CAMERA", "INVERT ALTITUDE", "RAIN DENSITY", "PERFORMANCE OVERLAY", "MOTH PAINT", "CONTROLS REFERENCE" };
-    const char *vals[10] = { mv, sv, huds[p->hud_mode], schemes[p->control_scheme], cams[p->cam_mode], p->invert_lift ? "ON" : "OFF", rain[p->rain_density], p->show_fps ? "ON" : "OFF", paints[p->paint], NULL };
-    for (int i = 0; i < 10; i++) menu_item(110, 52 + 18.0f * (float)i, labels[i], vals[i], a->menu_sel == i, 1);
+    static const char *const details[DETAIL_COUNT] = { "AUTO", "HIGH", "MEDIUM", "LOW" };
+    const char *labels[11] = { "MUSIC VOLUME", "EFFECTS VOLUME", "HUD", "CONTROL SCHEME", "DEFAULT CAMERA", "INVERT ALTITUDE", "RAIN DENSITY", "PERFORMANCE OVERLAY", "MOTH PAINT", "DETAIL", "CONTROLS REFERENCE" };
+    const char *vals[11] = { mv, sv, huds[p->hud_mode], schemes[p->control_scheme], cams[p->cam_mode], p->invert_lift ? "ON" : "OFF", rain[p->rain_density], p->show_fps ? "ON" : "OFF", paints[p->paint], details[p->detail], NULL };
+    for (int i = 0; i < 11; i++) menu_item(110, 48 + 17.0f * (float)i, labels[i], vals[i], a->menu_sel == i, 1);
     if (a->note_t > 0) gfx_text(FONT_SMALL, SCR_W * 0.5f, 236, a->note, C_ACC, ALIGN_CENTER);
     ui_footer("X:SAVE O:BACK");
 }
@@ -722,7 +724,7 @@ void menus_update(float dt) {
     case ST_DRIFT_SETUP: drift_update(); break;
     case ST_OPTIONS: options_update(); break;
     case ST_LOAD: load_update(); break;
-    case ST_CONTROLS: if (back() || ok()) { g_app.menu_sel = 9; app_set_state(ST_OPTIONS); } break;
+    case ST_CONTROLS: if (back() || ok()) { g_app.menu_sel = 10; app_set_state(ST_OPTIONS); } break;
     case ST_CREDITS: credits_update(); break;
     case ST_PROLOGUE: prologue_update(); break;
     case ST_CASEFILE: casefile_update(); break;

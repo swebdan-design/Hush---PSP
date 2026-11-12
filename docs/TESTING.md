@@ -88,6 +88,23 @@ Title with attract-mode flight, menus, Drift in all four districts, rain, fog, t
 HUD (compass, radar, speed/altitude, signal meter, objective marker with distance, transmissions), Signal Console pages
 with live oscilloscope/meters/voice activity, briefing and debrief. Issues found and fixed: cockpit panel labels overlapped.
 
+## 5b. First physical-hardware report (PSP-3000) and fixes
+Reported by the player: (1) frame rate became jittery/choppy at times, (2) window-light textures on roofs, (3) textures
+"dropping out": a blue ground and an invisible overhead railway; flying traffic and controls were good.
+- (3) Cause: the PSP GE rejects a primitive outright when, after near-plane clipping, any vertex lies more than 2048 px from
+  the viewport centre (PPSSPP models this rule in its software renderer, but the scenes it was tested with never showed it).
+  77 m ground tiles under a low camera and the
+  single-quad tops of the 320-600 m rail/highway decks hit this. Fixes: horizontal faces split into <= 20 m cells;
+  `guardclip.h` clips risky triangles on the CPU against planes at 80 % of the guard band (ground, water, skyline, signs,
+  and replacements for static geometry within 55 m); near plane raised to 1.5 m. Host tests reproduce the rejection with a
+  model of the GE rule and show 0 of the clipped output rejected and no visible triangle lost (4000-triangle fuzz).
+- (2) Cause: roofs and sidewalks used the concrete facade texture, which contains windows. Fix: dedicated bitumen-roof and
+  paving textures.
+- (1) Mitigations: adaptive detail governor (draw distance, light/sign/crowd/rain budgets, wet reflections) driven by the
+  measured frame time; frustum culling and a screen-size cap for glow sprites; smaller sign glows; audio economy mode when
+  the audio thread's measured load exceeds 55 %; Options › Detail (Auto/High/Medium/Low); the performance overlay now shows
+  real frame ms, clipped triangles, audio load and detail level. **These need re-testing on the PSP-3000.**
+
 ## 6. Known issues and limitations
 - Not tested on PSP hardware; the GE's handling of large near-plane triangles is mitigated by facade tessellation but unverified on device.
 - PPSSPP software renderer only; hardware-accelerated backends were not exercised.

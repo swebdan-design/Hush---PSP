@@ -195,6 +195,7 @@ struct HushMusic {
     float rev_size_applied, rev_decay_applied, rev_damp_applied;
     int rev_update_ctr;
 
+    volatile int economy;             /* set by the platform when the audio CPU budget is tight */
     MusicViz viz;
     float rms_accL, rms_accR;
     int rms_n;

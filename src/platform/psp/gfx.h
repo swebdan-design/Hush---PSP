@@ -66,6 +66,7 @@ V3 gfx_cam_fwd(void);
 V3 gfx_cam_right(void);
 V3 gfx_cam_up(void);
 float gfx_cam_fov(void);
+float gfx_cam_znear(void);
 
 /* state helpers */
 void gfx_mode_2d(void);       /* no depth, alpha blend */

@@ -155,7 +155,7 @@ static void decorate(World *w, float x0, float z0, float x1, float z1, float bas
             p = v3(corner ? x0 + 2.0f : x1 - 2.0f, y, fz);
             add_sign(w, p, 1.5f, 6.0f, 1, face == 2 ? 1 : -1, 1, id, rng_chance(&d, 0.2f));
         }
-        add_light(w, p, 4.0f, col, LT_SIGN, 0, 0);
+        add_light(w, p, 2.6f, col, LT_SIGN, 0, 0);
     }
     /* flat shop signs above the storefront band */
     if (rng_chance(&d, p_flat) && top - base > 12.0f) {

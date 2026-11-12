@@ -51,6 +51,8 @@ static int audio_thread(SceSize args, void *argp) {
         uint64_t t1 = now_us();
         float load = (float)(t1 - t0) / block_us;
         g_load = g_load * 0.95f + load * 0.05f;
+        if (g_load > 0.55f) hush_music_set_economy(g_music, 1);
+        else if (g_load < 0.35f) hush_music_set_economy(g_music, 0);
         if (load > 0.9f) g_late++;
         g_blocks++;
         sceAudioOutputPannedBlocking(g_channel, PSP_AUDIO_VOLUME_MAX, PSP_AUDIO_VOLUME_MAX, o);
