@@ -1,0 +1,215 @@
+/* HUSH — procedural textures. All generated deterministically at boot; no
+ * external image files are required. Formats: 5650 for opaque facades,
+ * 4444 for anything with alpha. */
+#include "textures.h"
+#include "../core/rng.h"
+#include "../assets/generated/ads.h"
+#include <pspkernel.h>
+#include <psputils.h>
+#include <string.h>
+
+TexSet g_tex;
+
+#define FW 128
+static uint16_t __attribute__((aligned(16))) g_facade_px[TEX_COUNT][FW * FW];
+static uint16_t __attribute__((aligned(16))) g_glow_px[32 * 32];
+static uint16_t __attribute__((aligned(16))) g_steam_px[32 * 32];
+static uint16_t __attribute__((aligned(16))) g_sky_px[256 * 64];
+static uint16_t __attribute__((aligned(16))) g_water_px[64 * 64];
+static uint16_t __attribute__((aligned(16))) g_ground_px[64 * 64];
+
+static uint16_t p565(int r, int g, int b) {
+    r = h_clampi(r, 0, 255); g = h_clampi(g, 0, 255); b = h_clampi(b, 0, 255);
+    return (uint16_t)(((b >> 3) << 11) | ((g >> 2) << 5) | (r >> 3));
+}
+static uint16_t p4444(int r, int g, int b, int a) {
+    r = h_clampi(r, 0, 255); g = h_clampi(g, 0, 255); b = h_clampi(b, 0, 255); a = h_clampi(a, 0, 255);
+    return (uint16_t)(((a >> 4) << 12) | ((b >> 4) << 8) | ((g >> 4) << 4) | (r >> 4));
+}
+
+static float hash2(int x, int y, uint32_t s) {
+    uint32_t h = (uint32_t)x * 374761393u + (uint32_t)y * 668265263u + s * 2246822519u;
+    h = (h ^ (h >> 13)) * 1274126177u;
+    return (float)((h ^ (h >> 16)) & 0xFFFF) / 65535.0f;
+}
+
+/* window colours: warm sodium, cool fluorescent, television blue */
+static void window_col(Rng *r, int *R, int *G, int *B, float bright) {
+    float k = rng_float(r);
+    if (k < 0.55f) { *R = 255; *G = 190; *B = 110; }
+    else if (k < 0.85f) { *R = 190; *G = 220; *B = 255; }
+    else { *R = 120; *G = 150; *B = 255; }
+    *R = (int)(*R * bright); *G = (int)(*G * bright); *B = (int)(*B * bright);
+}
+
+static void gen_facade(int t) {
+    uint16_t *px = g_facade_px[t];
+    Rng r;
+    rng_seed(&r, 0xFACADEu, (uint32_t)t);
+    for (int y = 0; y < FW; y++)
+        for (int x = 0; x < FW; x++) {
+            float n = hash2(x, y, (uint32_t)t) * 10.0f;
+            int base = 0;
+            switch (t) {
+            case TEX_GLASS: base = 26; break;
+            case TEX_RESIDENTIAL: base = 30; break;
+            case TEX_INDUSTRIAL: base = 34; break;
+            case TEX_DERELICT: base = 22; break;
+            case TEX_CONCRETE: base = 38; break;
+            case TEX_METAL: base = 30; break;
+            default: base = 20; break;
+            }
+            int v = base + (int)n;
+            if (t == TEX_GARDEN) px[y * FW + x] = p565(v / 2, v + 20 + (int)(hash2(x / 2, y / 2, 7) * 40), v / 2 + 6);
+            else if (t == TEX_GLASS) px[y * FW + x] = p565(v - 6, v, v + 12);
+            else if (t == TEX_INDUSTRIAL) px[y * FW + x] = p565(v + 4, v, v - 6);
+            else px[y * FW + x] = p565(v, v, v + 3);
+        }
+    switch (t) {
+    case TEX_GLASS: {
+        /* curtain wall: 16 floors x 8 bays, whole floors lit or dark */
+        for (int fl = 0; fl < 16; fl++) {
+            int lit = rng_chance(&r, 0.5f);
+            int R, G, B; window_col(&r, &R, &G, &B, 0.55f + 0.45f * rng_float(&r));
+            if (rng_chance(&r, 0.5f)) { R = 150; G = 200; B = 255; }
+            for (int y = fl * 8 + 1; y < fl * 8 + 6; y++)
+                for (int x = 0; x < FW; x++) {
+                    if ((x % 16) == 0) continue;
+                    int bay_lit = lit && hash2(x / 16, fl, 99) > 0.15f;
+                    if (bay_lit) px[y * FW + x] = p565(R * 3 / 4, G * 3 / 4, B * 3 / 4);
+                    else px[y * FW + x] = p565(18, 26, 40 + (y & 1) * 6);
+                }
+        }
+        break;
+    }
+    case TEX_RESIDENTIAL: case TEX_DERELICT: case TEX_CONCRETE: {
+        int cols = t == TEX_CONCRETE ? 6 : 8, rows = t == TEX_CONCRETE ? 10 : 12;
+        float plit = t == TEX_RESIDENTIAL ? 0.42f : (t == TEX_DERELICT ? 0.06f : 0.25f);
+        int cw = FW / cols, ch = FW / rows;
+        for (int ry = 0; ry < rows; ry++)
+            for (int cx = 0; cx < cols; cx++) {
+                int lit = rng_chance(&r, plit);
+                int broken = t == TEX_DERELICT && rng_chance(&r, 0.35f);
+                int R, G, B; window_col(&r, &R, &G, &B, 0.5f + 0.5f * rng_float(&r));
+                int x0 = cx * cw + 2, x1 = cx * cw + cw - 3, y0 = ry * ch + 2, y1 = ry * ch + ch - 3;
+                for (int y = y0; y <= y1; y++)
+                    for (int x = x0; x <= x1; x++) {
+                        if (broken) { if (hash2(x, y, 5) > 0.5f) px[y * FW + x] = p565(6, 7, 8); continue; }
+                        if (lit) {
+                            float edge = (y == y0 || y == y1 || x == x0 || x == x1) ? 0.7f : 1.0f;
+                            px[y * FW + x] = p565((int)(R * edge), (int)(G * edge), (int)(B * edge));
+                        } else px[y * FW + x] = p565(12, 14, 20);
+                    }
+                /* balcony / ledge line */
+                if (t == TEX_RESIDENTIAL) for (int x = cx * cw; x < cx * cw + cw; x++) px[(ry * ch + ch - 1) * FW + x] = p565(45, 45, 50);
+            }
+        if (t == TEX_DERELICT) {
+            /* water stains running down */
+            for (int k = 0; k < 18; k++) {
+                int x = rng_int(&r, FW), len = 20 + rng_int(&r, 80), y0 = rng_int(&r, FW);
+                for (int y = y0; y < y0 + len; y++) px[(y % FW) * FW + x] = p565(14, 18, 16);
+            }
+        }
+        break;
+    }
+    case TEX_INDUSTRIAL: {
+        for (int y = 0; y < FW; y++)
+            for (int x = 0; x < FW; x++) {
+                int rib = (x % 8) < 2 ? -10 : 0;
+                uint16_t c = px[y * FW + x];
+                int g = ((c >> 5) & 63) * 4;
+                px[y * FW + x] = p565(g + rib + 6, g + rib, g + rib - 4);
+            }
+        /* hazard stripe and a row of high windows */
+        for (int y = 100; y < 106; y++) for (int x = 0; x < FW; x++) px[y * FW + x] = ((x + y) / 6) & 1 ? p565(170, 120, 20) : p565(20, 18, 16);
+        for (int k = 0; k < 6; k++) {
+            int lit = rng_chance(&r, 0.4f);
+            for (int y = 20; y < 30; y++) for (int x = k * 21 + 4; x < k * 21 + 16; x++) px[y * FW + x] = lit ? p565(255, 160, 70) : p565(14, 12, 10);
+        }
+        break;
+    }
+    case TEX_METAL: {
+        for (int y = 0; y < FW; y++)
+            for (int x = 0; x < FW; x++) {
+                int seam = (y % 32) == 0 || (x % 64) == 0;
+                int v = 24 + (int)(hash2(x, y / 4, 3) * 8) + (seam ? -12 : 0);
+                px[y * FW + x] = p565(v, v + 2, v + 8);
+            }
+        /* occasional maintenance lamp */
+        for (int y = 60; y < 63; y++) for (int x = 30; x < 33; x++) px[y * FW + x] = p565(255, 90, 60);
+        break;
+    }
+    default: break;
+    }
+    Tex tx = { px, FW, FW, GU_PSM_5650 };
+    g_tex.facade[t] = gfx_tex_to_vram(tx);
+}
+
+static void gen_glow(void) {
+    for (int y = 0; y < 32; y++)
+        for (int x = 0; x < 32; x++) {
+            float dx = ((float)x - 15.5f) / 15.5f, dy = ((float)y - 15.5f) / 15.5f;
+            float d = sqrtf(dx * dx + dy * dy);
+            float core = h_clampf(1.0f - d * 3.0f, 0.0f, 1.0f);
+            float halo = h_clampf(1.0f - d, 0.0f, 1.0f);
+            float a = h_clampf(core + halo * halo * 0.55f, 0.0f, 1.0f);
+            g_glow_px[y * 32 + x] = p4444(255, 255, 255, (int)(a * 255.0f));
+            float s = h_clampf(1.0f - d, 0.0f, 1.0f);
+            float n = 0.75f + 0.25f * hash2(x / 3, y / 3, 11);
+            g_steam_px[y * 32 + x] = p4444(255, 255, 255, (int)(s * s * n * 255.0f));
+        }
+    Tex t = { g_glow_px, 32, 32, GU_PSM_4444 };
+    g_tex.glow = gfx_tex_to_vram(t);
+    Tex s = { g_steam_px, 32, 32, GU_PSM_4444 };
+    g_tex.steam = gfx_tex_to_vram(s);
+}
+
+static void gen_skyline(void) {
+    /* silhouettes of a city far bigger than anything rendered: tower tops, spires, lit windows */
+    Rng r;
+    rng_seed(&r, 0x5C71E, 1);
+    memset(g_sky_px, 0, sizeof(g_sky_px));
+    int x = 0;
+    while (x < 256) {
+        int w = 3 + rng_int(&r, 9);
+        int h = 8 + rng_int(&r, 30) + (rng_chance(&r, 0.12f) ? 20 : 0);
+        if (h > 63) h = 63;
+        int spire = rng_chance(&r, 0.15f);
+        for (int xx = x; xx < x + w && xx < 256; xx++)
+            for (int y = 63; y > 63 - h; y--) {
+                int lit = ((xx - x) % 2 == 1) && ((63 - y) % 3 == 1) && hash2(xx, y, 21) > 0.72f;
+                g_sky_px[y * 256 + xx] = lit ? p4444(255, 200, 140, 255) : p4444(40, 44, 56, 255);
+            }
+        if (spire) for (int y = 63 - h; y > 63 - h - 8 && y > 0; y--) g_sky_px[y * 256 + x + w / 2] = p4444(40, 44, 56, 255);
+        if (h > 30 && x + w / 2 < 256) g_sky_px[(63 - h - (spire ? 8 : 0)) * 256 + x + w / 2] = p4444(255, 60, 40, 255);
+        x += w + (rng_chance(&r, 0.3f) ? 1 : 0);
+    }
+    Tex t = { g_sky_px, 256, 64, GU_PSM_4444 };
+    g_tex.skyline = gfx_tex_to_vram(t);
+}
+
+static void gen_water_ground(void) {
+    for (int y = 0; y < 64; y++)
+        for (int x = 0; x < 64; x++) {
+            float n = 0.6f * hash2(x / 4, y / 2, 31) + 0.4f * hash2(x, y, 32);
+            float streak = (hash2(x / 8, y, 33) > 0.85f) ? 0.4f : 0.0f;
+            int v = (int)(20 + 40 * n + 80 * streak);
+            g_water_px[y * 64 + x] = p4444(v / 2, v, v + 10, 200 + (int)(40 * n));
+            int g = 18 + (int)(14 * hash2(x, y, 41)) + ((x % 32) == 0 && (y % 8) < 4 ? 50 : 0);
+            g_ground_px[y * 64 + x] = p565(g, g, g + 4);
+        }
+    Tex w = { g_water_px, 64, 64, GU_PSM_4444 };
+    g_tex.water = gfx_tex_to_vram(w);
+    Tex gr = { g_ground_px, 64, 64, GU_PSM_5650 };
+    g_tex.ground = gfx_tex_to_vram(gr);
+}
+
+void textures_init(void) {
+    gen_glow();
+    for (int t = 0; t < TEX_COUNT; t++) gen_facade(t);
+    gen_skyline();
+    gen_water_ground();
+    Tex a = { ads_tex, ADS_W, ADS_H, GU_PSM_4444 };
+    g_tex.ads = gfx_tex_to_vram(a);
+    sceKernelDcacheWritebackAll();
+}
