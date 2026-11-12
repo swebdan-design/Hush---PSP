@@ -99,7 +99,7 @@ void voice_render(Voice *v, int n, float layer_gain, float *outL, float *outR,
         if (w1 == W_FM) {
             float mod = dsp_read(sine, ph2) * fm_idx;
             float ph = (float)(ph1 >> 8) * (1.0f / 16777216.0f) + mod;
-            ph -= floorf(ph);
+            ph -= dsp_floor(ph);
             uint32_t pi = (uint32_t)(ph * 4294967040.0f);
             s1 = dsp_read(sine, pi);
         } else if (w1 == W_PULSE) {
@@ -127,8 +127,8 @@ void voice_render(Voice *v, int n, float layer_gain, float *outL, float *outR,
         if (ax > peak) peak = ax;
         float l = x * pl, r = x * pr;
         outL[i] += l; outR[i] += r;
-        sendDL[i] += l * sd; sendDR[i] += r * sd;
-        sendR[i] += (l + r) * sv;
+        if (sd != 0.0f) { sendDL[i] += l * sd; sendDR[i] += r * sd; }
+        if (sv != 0.0f) sendR[i] += (l + r) * sv;
     }
     v->ph1 = ph1; v->ph2 = ph2;
     v->level_meter = v->level_meter * 0.9f + peak * 0.1f;

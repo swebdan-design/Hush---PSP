@@ -23,6 +23,9 @@ include $(PSPSDK)/lib/build.mak
 STRICT_FP = -fno-fast-math -ffp-contract=off
 $(BUILD)/obj/audio/composer.o $(BUILD)/obj/audio/theory.o $(BUILD)/obj/audio/profiles.o $(BUILD)/obj/audio/music_engine.o $(BUILD)/obj/game/world.o $(BUILD)/obj/game/traffic.o: CFLAGS += $(STRICT_FP)
 
+# the per-sample DSP loops: -O3 unswitches the per-voice waveform/filter branches out of the sample loop
+$(BUILD)/obj/audio/synth.o $(BUILD)/obj/audio/fx.o $(BUILD)/obj/audio/dsp.o: CFLAGS += -O3
+
 $(BUILD)/obj/%.o: src/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@

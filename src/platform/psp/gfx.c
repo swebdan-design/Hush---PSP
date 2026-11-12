@@ -22,7 +22,7 @@
 static unsigned int __attribute__((aligned(64))) g_list[LIST_BYTES / 4];
 static uint32_t g_vram_next;          /* offset from VRAM base */
 static void *g_draw_buf;
-static unsigned int g_last_vc;
+static unsigned int g_last_vc, g_need = 2;
 int gfx_frame_count;
 float gfx_last_cpu_ms, gfx_last_gpu_wait_ms;
 static uint64_t g_frame_start;
@@ -64,7 +64,9 @@ Tex gfx_tex_to_vram(Tex t) {
 void gfx_init(void) {
     g_vram_next = 0;
     /* framebuffers are addressed relative to VRAM start */
-    uint32_t fb_bytes = BUF_W * SCR_H * 4;
+    /* 16-bit (RGB565) colour buffers, dithered: half the framebuffer bandwidth of 8888 for every blended pixel,
+     * and 544 KB of VRAM freed so every texture is sampled from VRAM instead of main RAM */
+    uint32_t fb_bytes = BUF_W * SCR_H * 2;
     void *fb0 = (void *)0;
     void *fb1 = (void *)fb_bytes;
     void *zb = (void *)(fb_bytes * 2);
@@ -73,7 +75,7 @@ void gfx_init(void) {
 
     sceGuInit();
     sceGuStart(GU_DIRECT, g_list);
-    sceGuDrawBuffer(GU_PSM_8888, fb0, BUF_W);
+    sceGuDrawBuffer(GU_PSM_5650, fb0, BUF_W);
     sceGuDispBuffer(SCR_W, SCR_H, fb1, BUF_W);
     sceGuDepthBuffer(zb, BUF_W);
     sceGuOffset(2048 - (SCR_W / 2), 2048 - (SCR_H / 2));
@@ -89,6 +91,11 @@ void gfx_init(void) {
     sceGuEnable(GU_BLEND);
     sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
     sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
+    {   /* ordered dither hides 565 banding in fog and glows (never pass NULL here) */
+        static ScePspIMatrix4 dith = { { -4, 0, -3, 1 }, { 2, -2, 3, -1 }, { -3, 1, -4, 0 }, { 3, -1, 2, -2 } };
+        sceGuSetDither(&dith);
+        sceGuEnable(GU_DITHER);
+    }
     sceGuFinish();
     sceGuSync(0, 0);
     sceDisplayWaitVblankStart();
@@ -99,7 +106,25 @@ void gfx_init(void) {
 
 void gfx_term(void) { sceGuTerm(); }
 
+static int g_pending;   /* a submitted frame the GE may still be drawing */
+
+void gfx_present(void) {
+    if (!g_pending) return;
+    g_pending = 0;
+    diag_mark("gpu wait");
+    uint64_t t0 = gfx_ticks_us();
+    sceGuSync(0, 0);
+    uint64_t t1 = gfx_ticks_us();
+    gfx_last_gpu_wait_ms = (float)(t1 - t0) / 1000.0f;
+    unsigned int vc = sceDisplayGetVcount();
+    while (vc - g_last_vc < g_need) { sceDisplayWaitVblankStart(); vc = sceDisplayGetVcount(); }
+    g_last_vc = vc;
+    g_draw_buf = sceGuSwapBuffers();
+    gfx_frame_count++;
+}
+
 void gfx_begin(uint32_t clear_color) {
+    gfx_present();   /* never start a list while the previous one may still run */
     g_frame_start = gfx_ticks_us();
     sceGuStart(GU_DIRECT, g_list);
     sceGuClearColor(clear_color);
@@ -110,22 +135,20 @@ void gfx_begin(uint32_t clear_color) {
 
 int gfx_list_peak, gfx_list_last;
 
-void gfx_end(int target_hz) {
+/* Closes the frame's list. The GE has been executing it while it was built (GU_DIRECT) and finishes the tail
+ * on its own; the caller can do CPU work (the next game update) before gfx_present waits and flips. */
+void gfx_submit(int target_hz) {
     gfx_list_last = sceGuCheckList();
     if (gfx_list_last > gfx_list_peak) gfx_list_peak = gfx_list_last;
     sceGuFinish();
-    uint64_t t0 = gfx_ticks_us();
-    diag_mark("gpu wait");
-    sceGuSync(0, 0);
-    uint64_t t1 = gfx_ticks_us();
-    gfx_last_cpu_ms = (float)(t0 - g_frame_start) / 1000.0f;
-    gfx_last_gpu_wait_ms = (float)(t1 - t0) / 1000.0f;
-    unsigned int need = target_hz >= 60 ? 1u : 2u;
-    unsigned int vc = sceDisplayGetVcount();
-    while (vc - g_last_vc < need) { sceDisplayWaitVblankStart(); vc = sceDisplayGetVcount(); }
-    g_last_vc = vc;
-    g_draw_buf = sceGuSwapBuffers();
-    gfx_frame_count++;
+    gfx_last_cpu_ms = (float)(gfx_ticks_us() - g_frame_start) / 1000.0f;
+    g_need = target_hz >= 60 ? 1u : 2u;
+    g_pending = 1;
+}
+
+void gfx_end(int target_hz) {
+    gfx_submit(target_hz);
+    gfx_present();
 }
 
 void gfx_bind(const Tex *t, int linear, int repeat) {
@@ -400,8 +423,9 @@ void gfx_logo(float cx, float y, float alpha) {
 int gfx_screenshot(const char *path) {
     void *top; int bufw, fmt;
     sceDisplayGetFrameBuf(&top, &bufw, &fmt, 0);
-    if (!top || fmt != PSP_DISPLAY_PIXEL_FORMAT_8888) return 0;
+    if (!top || (fmt != PSP_DISPLAY_PIXEL_FORMAT_8888 && fmt != PSP_DISPLAY_PIXEL_FORMAT_565)) return 0;
     const uint32_t *src = (const uint32_t *)((uint32_t)top | 0x40000000u);
+    const uint16_t *src16 = (const uint16_t *)src;
     SceUID fd = sceIoOpen(path, PSP_O_WRONLY | PSP_O_CREAT | PSP_O_TRUNC, 0777);
     if (fd < 0) return 0;
     uint8_t hdr[54];
@@ -419,6 +443,14 @@ int gfx_screenshot(const char *path) {
     static uint8_t line[SCR_W * 3];
     for (int y = SCR_H - 1; y >= 0; y--) {
         for (int x = 0; x < SCR_W; x++) {
+            if (fmt == PSP_DISPLAY_PIXEL_FORMAT_565) {
+                uint32_t p = src16[y * bufw + x];
+                uint32_t r = p & 31, g = (p >> 5) & 63, b = (p >> 11) & 31;
+                line[x * 3 + 0] = (uint8_t)((b << 3) | (b >> 2));
+                line[x * 3 + 1] = (uint8_t)((g << 2) | (g >> 4));
+                line[x * 3 + 2] = (uint8_t)((r << 3) | (r >> 2));
+                continue;
+            }
             uint32_t p = src[y * bufw + x];
             line[x * 3 + 0] = (uint8_t)(p >> 16);
             line[x * 3 + 1] = (uint8_t)(p >> 8);

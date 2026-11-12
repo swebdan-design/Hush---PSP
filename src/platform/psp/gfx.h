@@ -47,6 +47,9 @@ void gfx_term(void);
 void gfx_begin(uint32_t clear_color);
 /* Finishes the list, waits for the GE, flips at a stable 30 Hz (or 60 when allowed). */
 void gfx_end(int target_hz);
+/* split frame end: submit the list now, present (wait for the GE, flip) later; gfx_begin presents if needed */
+void gfx_submit(int target_hz);
+void gfx_present(void);
 void *gfx_vram_alloc(int bytes);
 int gfx_vram_used(void);
 /* Copies a texture into VRAM if there is room (faster sampling); returns the Tex to use. */

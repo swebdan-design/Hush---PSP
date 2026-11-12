@@ -46,6 +46,11 @@ static inline float dsp_read(const float *t, uint32_t ph) {
 float dsp_midi_hz(float note);
 uint32_t dsp_hz_inc(float hz);
 /* Fast soft saturation, |out| < 1, approximately tanh for |x| < 2. */
+/* exact floor for |x| < 2^31 without a libm call (floorf is a function call on the PSP) */
+static inline float dsp_floor(float x) {
+    float t = (float)(int32_t)x;
+    return t > x ? t - 1.0f : t;
+}
 static inline float dsp_sat(float x) {
     if (x > 3.0f) return 1.0f;
     if (x < -3.0f) return -1.0f;

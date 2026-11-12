@@ -16,7 +16,7 @@
 #include "diag.h"
 #include <pspfpu.h>
 
-#define HUSH_BUILD "build 2026-11-12b"
+#define HUSH_BUILD "build 2026-11-12c"
 
 PSP_MODULE_INFO("HUSH", 0, 1, 0);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
@@ -381,6 +381,9 @@ int main(int argc, char **argv) {
                 if (++secs % 30 == 0 && a->state != ST_PLAY && a->state != ST_PROLOGUE) diag_flush();
                 if (secs % 120 == 0) diag_flush();   /* at most one short hitch every two minutes in play */
                 diag_log("st %d mode %d d%d fps %.1f frame %.1f ms cpu %.1f gpu %.1f aud %.0f%% late %u/%u q%d list %dKB tris %d", (int)a->state, a->mode, a->world_district, a->fps, a->frame_avg * 1000.0f, gfx_last_cpu_ms, gfx_last_gpu_wait_ms, audio_out_load() * 100.0f, audio_out_underruns(), audio_out_blocks(), rw_quality(), gfx_list_last / 1024, rw_stats()->tris_drawn);
+                char rep[200];
+                diag_stage_report(rep, sizeof(rep));
+                diag_log("  ms/frame: %s", rep);
             }
         }
         diag_mark("input");
@@ -427,9 +430,9 @@ int main(int argc, char **argv) {
         else if (a->state != ST_PLAY) menus_render();
         else if (a->note_t > 0) gfx_text(FONT_SMALL, SCR_W * 0.5f, 52, a->note, RGBA(255, 186, 90, (int)(255 * h_clampf(a->note_t, 0, 1))), ALIGN_CENTER);
         diag_mark("end");
-        gfx_end(30);
-        diag_mark("frame done");
+        gfx_submit(30);   /* the GE finishes this frame while the next update runs; gfx_begin waits and flips */
     }
+    gfx_present();
     diag_flush();
     audio_out_stop();
     gfx_term();

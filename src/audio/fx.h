@@ -50,6 +50,7 @@ void chorus_process(Chorus *c, float *L, float *R, float rate, float depth, floa
 
 typedef struct {
     float holdL, holdR, cnt;
+    float satL, satR;          /* dsp_sat of the held values, recomputed only when they change */
     Svf hpL, hpR, lpL, lpR;
     uint32_t noise;
     float crackle;

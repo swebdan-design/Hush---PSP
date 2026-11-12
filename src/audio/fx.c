@@ -162,14 +162,17 @@ void radio_process(Radio *r, float *L, float *R, float amount, int n) {
         r->cnt += 1.0f;
         if (r->cnt >= hold) {
             r->cnt -= hold;
-            r->holdL = floorf(xl * levels + 0.5f) * inv_levels;
-            r->holdR = floorf(xr * levels + 0.5f) * inv_levels;
+            r->holdL = dsp_floor(xl * levels + 0.5f) * inv_levels;
+            r->holdR = dsp_floor(xr * levels + 0.5f) * inv_levels;
+            /* the saturator only needs re-evaluating when the held value changes (it divides) */
+            r->satL = dsp_sat(r->holdL * 1.3f);
+            r->satR = dsp_sat(r->holdR * 1.3f);
         }
         float nz = dsp_noise(&r->noise);
         if ((float)(dsp_noise_u(&r->noise) >> 8) * (1.0f / 16777216.0f) < crackle_p) r->crackle = 0.3f * a * h_signf(nz);
         r->crackle *= 0.82f;
-        L[i] = dsp_sat(r->holdL * 1.3f) + r->crackle + nz * 0.004f * a;
-        R[i] = dsp_sat(r->holdR * 1.3f) + r->crackle * 0.7f + nz * 0.004f * a;
+        L[i] = r->satL + r->crackle + nz * 0.004f * a;
+        R[i] = r->satR + r->crackle * 0.7f + nz * 0.004f * a;
     }
 }
 

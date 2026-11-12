@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <pspfpu.h>
+#include <psprtc.h>
 
 #define LOG_PATH "hush_log.txt"
 #define LOG_MAX_BYTES (256 * 1024)   /* stop logging rather than fill the Memory Stick */
@@ -47,7 +48,44 @@ void diag_log(const char *fmt, ...) {
     g_n += n;
 }
 
+/* per-stage CPU time: the time between two marks is charged to the earlier stage */
+#define MAX_STAGES 48
+static const char *g_st_name[MAX_STAGES];
+static uint32_t g_st_us[MAX_STAGES];
+static int g_nst = 0, g_cur = -1, g_st_frames;
+static u64 g_last_tick;
+
+static int stage_index(const char *name) {
+    for (int i = 0; i < g_nst; i++) if (g_st_name[i] == name) return i;
+    if (g_nst >= MAX_STAGES) return -1;
+    g_st_name[g_nst] = name;
+    g_st_us[g_nst] = 0;
+    return g_nst++;
+}
+
+void diag_stage_report(char *out, int cap) {
+    /* top stages by average ms per frame since the last report */
+    out[0] = 0;
+    if (g_st_frames <= 0) return;
+    int used[MAX_STAGES] = { 0 }, len = 0;
+    for (int k = 0; k < 7; k++) {
+        int best = -1;
+        for (int i = 0; i < g_nst; i++) if (!used[i] && (best < 0 || g_st_us[i] > g_st_us[best])) best = i;
+        if (best < 0 || g_st_us[best] == 0) break;
+        used[best] = 1;
+        len += snprintf(out + len, (size_t)(cap - len), "%s%s %.1f", k ? ", " : "", g_st_name[best], (float)g_st_us[best] / 1000.0f / (float)g_st_frames);
+        if (len >= cap - 1) break;
+    }
+    for (int i = 0; i < g_nst; i++) g_st_us[i] = 0;
+    g_st_frames = 0;
+}
+
 void diag_mark(const char *stage) {
+    u64 now;
+    sceRtcGetCurrentTick(&now);
+    if (g_cur >= 0 && g_last_tick) g_st_us[g_cur] += (uint32_t)(now - g_last_tick);
+    g_cur = stage_index(stage);
+    g_last_tick = now;
     /* traps are off, but the FPU still raises sticky flags: note where invalid/divide/overflow first happen */
     uint32_t f = pspFpuGetFlags() & (PSP_FPU_EXCEPTION_OVERFLOW | PSP_FPU_EXCEPTION_DIVBYZERO | PSP_FPU_EXCEPTION_INVALIDOP);
     if (f) {
@@ -61,4 +99,4 @@ void diag_mark(const char *stage) {
 
 void diag_arm(int frames, const char *why) { (void)frames; (void)why; }
 
-void diag_frame(void) { g_frame++; }
+void diag_frame(void) { g_frame++; g_st_frames++; }

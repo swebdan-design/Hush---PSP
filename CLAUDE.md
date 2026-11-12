@@ -33,6 +33,10 @@ Modes: **PATROL** (12 missions), **DRIFT** (free flight), **SIGNAL CONSOLE** (th
 - `hush_log.txt` (beside the EBOOT, `src/platform/psp/diag.c`): boot stats, state changes, per-second fps/audio load,
   and the stage where FPU flags first appear. Buffered in RAM, written only at loads, menus/pause and exit: **never write
   the Memory Stick during gameplay** (each write costs tens of ms on hardware; a per-frame trace made the game unplayable).
+- Frame: 16-bit RGB565 colour buffers + ordered dither (half the fill bandwidth of 8888; all textures fit in VRAM).
+  The main loop calls `gfx_submit` and the GE finishes drawing while the next update runs; `gfx_begin` (and anything
+  that touches GE-read memory, e.g. district loads via `loading_screen`) presents/waits first.
+- Audio DSP hot loops (`synth.c`, `fx.c`, `dsp.c`) build with -O3; no libm calls per sample (`dsp_floor`, cached saturation).
 - Colours on the GE are ABGR (`RGBA()` macro in gfx.h does the packing). `sceGuDepthMask(GU_TRUE)` *disables* depth writes.
 
 ## Layout

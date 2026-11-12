@@ -133,6 +133,18 @@ Reported by the player: (1) frame rate became jittery/choppy at times, (2) windo
   The log is now buffered in RAM and written only at loads, menus, pause and exit. The audio output block was doubled to
   2048 samples (46 ms) to ride out hitches; audio pops are otherwise awaiting the per-second audio-load numbers from the log.
 
+## 5d. Performance pass for real hardware
+- Framebuffers 32-bit → 16-bit RGB565 with ordered dithering: half the colour-buffer bandwidth for every blended pixel
+  (glows, fog, neon); 544 KB VRAM freed so the 256 KB billboard atlas, previously sampled from main RAM, now sits in VRAM
+  (VRAM use 2028 → 1484 KB of 2048). Screenshots compared: visually equivalent.
+- Frame pipelining: the list is submitted and the next game update runs while the GE finishes, instead of waiting for the
+  GE first (PPSSPP end-of-frame GPU wait 0.6–2 ms → ~0).
+- Audio engine: per-sample `floorf` (FM voices, radio) replaced by an exact inline floor; the radio saturator (a division)
+  recomputed only when its held sample changes; zero-level sends skipped; DSP files at -O3. Output is **bit-identical**
+  (3 presets × 2 min compared sample for sample). 60 s offline render 10675 → 9907 ms emulated; in-game audio load
+  e.g. street 17.3 → 15.9 %, patrol 31 → 27.6 % (PPSSPP clock).
+- `hush_log.txt` now includes a per-second "ms/frame" breakdown of the most expensive stages, timed on the real clock.
+
 ## 6. Known issues and limitations
 - Not tested on PSP hardware; the GE's handling of large near-plane triangles is mitigated by facade tessellation but unverified on device.
 - PPSSPP software renderer only; hardware-accelerated backends were not exercised.
