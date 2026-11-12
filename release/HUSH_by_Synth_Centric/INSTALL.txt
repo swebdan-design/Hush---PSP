@@ -1,0 +1,11 @@
+HUSH - by Synth Centric
+
+PSP (homebrew-enabled firmware):
+  Copy the PSP folder in this package to the root of your Memory Stick, so that
+  the game is at ms0:/PSP/GAME/HUSH/EBOOT.PBP (PSP Go: ef0:). Launch HUSH from
+  Game > Memory Stick. Saves are written next to EBOOT.PBP (hush.sav, hush.bak).
+
+PPSSPP:
+  File > Load... and choose PSP/GAME/HUSH/EBOOT.PBP.
+
+Manual: docs/HUSH_Manual.pdf (or .md). Audio: audio/*.wav (44.1 kHz, 16-bit).

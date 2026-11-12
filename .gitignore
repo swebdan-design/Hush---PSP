@@ -7,6 +7,8 @@ tools/validation/m1_hello/EBOOT.PBP
 tools/validation/m1_hello/hush_m1*
 /tmp/
 __pycache__/
-release/HUSH_by_Synth_Centric/
+release/HUSH_by_Synth_Centric/*
+!release/HUSH_by_Synth_Centric/PSP/
+!release/HUSH_by_Synth_Centric/INSTALL.txt
 release/*.zip
 release/host_tests.log
