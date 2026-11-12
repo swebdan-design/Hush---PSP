@@ -159,8 +159,28 @@ static void perf(const char *tag) {
            tag, g_app.fps, gfx_last_cpu_ms, gfx_last_gpu_wait_ms, rs->tris_drawn, rs->chunks_drawn, rs->lights_drawn, rs->vehicles_drawn,
            audio_out_load() * 100.0f, audio_out_underruns(), audio_out_blocks(), (int)(sceKernelTotalFreeMemSize() / 1024));
 }
-static int g_step;
+static int g_step __attribute__((unused));
 static float g_step_t;
+#if HUSH_AUTOTEST == 2
+/* campaign run: every mission in order, autopiloted, fast-forwarded */
+static int g_cm = -1, g_cm_ok;
+static void autotest_tick(float dt) {
+    App *a = &g_app;
+    g_step_t += dt;
+    if (g_cm < 0) { if (g_step_t > 2.0f) { g_cm = 0; app_start_patrol(0); g_step_t = 0; printf("AUTOTEST: campaign start\n"); } return; }
+    if (a->state == ST_DEBRIEF || a->state == ST_FAILED || g_step_t > 400.0f) {
+        int ok = a->state == ST_DEBRIEF;
+        g_cm_ok += ok;
+        printf("AUTOTEST: mission %2d %-20s %s sim %.0fs hull %.0f fps %.1f tris %d\n", g_cm + 1, hush_missions[g_cm].title,
+               ok ? "COMPLETE" : (a->state == ST_FAILED ? a->mission.fail_reason : "TIMEOUT"), a->mission.total_time, a->craft.hull, a->fps, rw_stats()->tris_drawn);
+        if (g_cm == 3 || g_cm == 8) shot("campaign");
+        g_cm++;
+        if (g_cm >= MISSION_COUNT) { printf("AUTOTEST: campaign %d/12 complete, missions_done=0x%03x districts=0x%x landmarks=0x%x\n", g_cm_ok, a->prog.missions_done, a->prog.districts, a->prog.landmarks); a->quit = 1; return; }
+        app_start_patrol(g_cm);
+        g_step_t = 0;
+    }
+}
+#else
 static void autotest_tick(float dt) {
     App *a = &g_app;
     Input *in = &a->in;
@@ -203,6 +223,7 @@ static void autotest_tick(float dt) {
     case 20: if (g_step_t > 4.0f) { shot("briefing"); printf("AUTOTEST: done, %d frames, audio blocks %u late %u\n", gfx_frame_count, audio_out_blocks(), audio_out_underruns()); a->quit = 1; } break;
     }
 }
+#endif
 #endif
 
 /* ---------------- main loop ---------------- */
@@ -281,7 +302,7 @@ int main(int argc, char **argv) {
         case ST_PLAY:
             if (a->in.pressed & PSP_CTRL_START) { sfx_play(&a->sfx, SFX_UI_SELECT); a->menu_sel = 0; app_set_state(ST_PAUSE); break; }
             {
-                int steps = (a->autotest && a->mode == MODE_PATROL) ? 4 : 1;   /* validation build fast-forwards missions */
+                int steps = (a->autotest && a->mode == MODE_PATROL) ? (HUSH_AUTOTEST == 2 ? 8 : 4) : 1;   /* validation build fast-forwards missions */
                 for (int i = 0; i < steps; i++) game_update(dt, 1);
             }
             play_acc += dt;

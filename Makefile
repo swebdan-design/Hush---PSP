@@ -11,7 +11,7 @@ PSPDEV ?= /usr/local/pspdev
 export PSPDEV
 export PATH := $(PATH):$(PSPDEV)/bin
 
-.PHONY: all psp host test test-full autotest release clean assets
+.PHONY: all psp host test test-full autotest autotest-campaign release clean assets
 
 all: psp
 
@@ -20,6 +20,9 @@ psp:
 
 autotest:
 	@$(MAKE) --no-print-directory -f tools/psp.mk BUILD=build/autotest EXTRA_DEFS=-DHUSH_AUTOTEST
+
+autotest-campaign:
+	@$(MAKE) --no-print-directory -f tools/psp.mk BUILD=build/autotest-campaign EXTRA_DEFS=-DHUSH_AUTOTEST=2
 
 host:
 	@$(MAKE) --no-print-directory -f tools/host.mk build/host/hush-render build/host/hush-tests
