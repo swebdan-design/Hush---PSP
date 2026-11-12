@@ -1,6 +1,7 @@
 /* HUSH — the in-flight session shared by Patrol, Drift and the title attract mode. */
 #include "app.h"
 #include "../render/render_moth.h"
+#include "../render/render_crowd.h"
 #include <pspgu.h>
 #include <string.h>
 
@@ -106,6 +107,7 @@ void game_update(float dt, int controls) {
     }
     if (a->mode != MODE_PATROL && a->craft.hull < a->craft.hull_max) a->craft.hull = h_minf(a->craft.hull_max, a->craft.hull + 4.0f * dt); /* drift: self-repair */
     traffic_update(&a->traffic, &a->world, dt);
+    crowd_update(&a->crowd, &a->world, a->craft.pos, a->wx.rain, dt);
     weather_update(&a->wx, dt);
 
     if (a->mode == MODE_PATROL) {
@@ -204,8 +206,9 @@ void game_render(int with_hud) {
     gfx_set_camera(cam->eye, cam->target, cam->up, cam->fov, 1.0f, a->atmos.fog_far + 80.0f);
     rw_draw_world(&a->world, &a->atmos, a->time);
     rw_draw_traffic(&a->world, &a->traffic, &a->atmos, a->time);
+    rw_draw_crowd(&a->crowd, &a->atmos, a->time);
     moth_draw(&a->craft, a->time, a->prog.paint, cam->mode != CAM_COCKPIT, a->atmos.fog_near, a->atmos.fog_far, a->atmos.fog_color);
-    rw_draw_world_lights(&a->world, &a->atmos, a->time);
+    rw_draw_world_lights(&a->world, &a->atmos, a->time, a->wx.rain);
     draw_marker_3d(a);
     rw_flush_lights(&a->world, &a->atmos);
     rw_draw_effects(&a->world, &a->wx, &a->atmos, a->time, 1.0f / 30.0f, a->prog.rain_density);

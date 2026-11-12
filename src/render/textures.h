@@ -7,7 +7,7 @@
 
 typedef struct {
     Tex facade[TEX_COUNT];
-    Tex glow, skyline, water, ground, ads, steam;
+    Tex glow, skyline, water, ground, ads, steam, signs;
 } TexSet;
 
 extern TexSet g_tex;

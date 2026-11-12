@@ -168,6 +168,95 @@ def ad_panel(head, small, col, motif):
     return img
 
 
+
+NEON = [(255, 60, 190), (60, 230, 255), (170, 110, 255), (255, 90, 140), (150, 255, 100), (255, 175, 60), (255, 70, 70), (120, 200, 255)]
+BLADES = ['NOODLE', 'HOTEL', 'OPEN24', 'BAR', 'REPAIR', 'CLINIC', 'ARCADE', 'SYNTH']
+FLATS = ['QUIET BAR', 'MEMORY CLINIC', 'RAIN TAX PAID', 'NO SILENCE', 'PAWN', 'DUMPLINGS', 'CAPSULES 4H', 'WIRE & VALVE',
+         'TAPES', 'VOID LOUNGE', 'OPEN', 'NOODLES', 'SLEEP PODS', 'SIGNAL REPAIR', 'KARAOKE', 'PHARMACY']
+SHOPS = [('NOODLES', (255, 150, 50), (255, 190, 120)), ('PHARMACY', (90, 255, 140), (190, 255, 220)),
+         ('TAPES & WIRE', (255, 70, 200), (255, 170, 230)), ('SIGNAL REPAIR', (60, 220, 255), (170, 230, 255))]
+
+
+def neon_text(img, xy, text, font, col, anchor='mm'):
+    """Text with a soft neon halo: blurred colour underneath, near-white core on top."""
+    glow = Image.new('RGBA', img.size, (0, 0, 0, 0))
+    ImageDraw.Draw(glow).text(xy, text, font=font, fill=col + (255,), anchor=anchor)
+    glow = glow.filter(ImageFilter.GaussianBlur(2.2))
+    img.alpha_composite(glow)
+    img.alpha_composite(glow)
+    core = tuple(min(255, int(c * 0.45 + 150)) for c in col)
+    ImageDraw.Draw(img).text(xy, text, font=font, fill=core + (255,), anchor=anchor)
+
+
+def signs_atlas():
+    """256x256: 8 vertical blade signs (32x128) on top, 16 flat signs (64x32) below."""
+    img = Image.new('RGBA', (256, 256), (0, 0, 0, 0))
+    for i, word in enumerate(BLADES):
+        col = NEON[i % len(NEON)]
+        cell = Image.new('RGBA', (32, 128), (10, 8, 14, 235))
+        ImageDraw.Draw(cell).rectangle([0, 0, 31, 127], outline=tuple(int(c * 0.6) for c in col) + (255,))
+        f = ImageFont.truetype(INTER_BOLD, 15 if len(word) <= 5 else 13)
+        step = 118 / len(word)
+        for k, ch in enumerate(word):
+            neon_text(cell, (16, 8 + step * (k + 0.5)), ch, f, col)
+        img.paste(cell, (i * 32, 0))
+    for i, word in enumerate(FLATS):
+        col = NEON[(i * 3 + 1) % len(NEON)]
+        cell = Image.new('RGBA', (64, 32), (10, 8, 14, 230))
+        ImageDraw.Draw(cell).rectangle([0, 0, 63, 31], outline=tuple(int(c * 0.6) for c in col) + (255,))
+        size = 13
+        f = ImageFont.truetype(INTER_BOLD, size)
+        while f.getlength(word) > 58 and size > 6:
+            size -= 1
+            f = ImageFont.truetype(INTER_BOLD, size)
+        neon_text(cell, (32, 16), word, f, col)
+        img.paste(cell, ((i % 4) * 64, 128 + (i // 4) * 32))
+    return img
+
+
+def shopfronts():
+    """512x64 strip of four shopfronts, each 128x64 (= 8 m x 7 m in the world)."""
+    import random
+    rnd = random.Random(7)
+    img = Image.new('RGBA', (512, 64), (14, 14, 18, 255))
+    for i, (name, col, light) in enumerate(SHOPS):
+        x0 = i * 128
+        d = ImageDraw.Draw(img)
+        d.rectangle([x0, 0, x0 + 127, 63], fill=(18, 17, 22, 255))
+        # signboard
+        d.rectangle([x0 + 2, 2, x0 + 125, 15], fill=(8, 6, 10, 255))
+        size = 12
+        f = ImageFont.truetype(INTER_BOLD, size)
+        while f.getlength(name) > 118 and size > 6:
+            size -= 1
+            f = ImageFont.truetype(INTER_BOLD, size)
+        neon_text(img, (x0 + 64, 9), name, f, col)
+        d = ImageDraw.Draw(img)
+        # awning stripe
+        for k in range(0, 124, 8):
+            d.rectangle([x0 + 2 + k, 17, x0 + 5 + k, 19], fill=tuple(int(c * 0.7) for c in col) + (255,))
+        # lit window with shelves and silhouettes
+        wx0, wx1 = x0 + 6, x0 + 92
+        d.rectangle([wx0, 22, wx1, 56], fill=light + (255,))
+        for sy in (30, 39, 48):
+            d.rectangle([wx0, sy, wx1, sy + 1], fill=tuple(int(c * 0.55) for c in light) + (255,))
+            for k in range(wx0 + 2, wx1 - 3, 5):
+                if rnd.random() < 0.7:
+                    h = rnd.randint(2, 6)
+                    cc = rnd.choice([(80, 60, 50), (60, 80, 90), (120, 40, 60), (40, 90, 60)])
+                    d.rectangle([k, sy - h, k + 3, sy - 1], fill=cc + (255,))
+        for k in range(2):
+            px = wx0 + 18 + k * 40 + rnd.randint(-6, 6)
+            d.ellipse([px, 30, px + 7, 37], fill=(25, 22, 28, 255))
+            d.rectangle([px - 2, 37, px + 9, 56], fill=(25, 22, 28, 255))
+        d.rectangle([wx0, 22, wx1, 56], outline=(40, 40, 46, 255))
+        # door
+        d.rectangle([x0 + 98, 22, x0 + 122, 60], fill=(22, 22, 28, 255))
+        d.rectangle([x0 + 101, 25, x0 + 119, 45], fill=tuple(int(c * 0.6) for c in light) + (255,))
+        d.rectangle([x0, 58, x0 + 127, 63], fill=(30, 30, 34, 255))
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     preview = None
@@ -186,8 +275,12 @@ def main():
     for i, a in enumerate(ADS):
         sheet.paste(ad_panel(*a), ((i % 2) * 128, (i // 2) * 64))
     write_header('ads', 256, 512, to4444(sheet), f'#define ADS_COUNT {len(ADS)}\n')
+    sg = signs_atlas()
+    write_header('signs', 256, 256, to4444(sg))
+    sh = shopfronts()
+    write_header('shops', 512, 64, to4444(sh))
     if preview:
-        for n, im in [('font_small', small), ('font_large', large), ('logo', lg), ('credit', cr), ('ads', sheet)]:
+        for n, im in [('signs', sg), ('shops', sh), ('font_small', small), ('font_large', large), ('logo', lg), ('credit', cr), ('ads', sheet)]:
             bg = Image.new('RGBA', im.size, (20, 24, 32, 255))
             bg.alpha_composite(im)
             bg.save(os.path.join(preview, n + '.png'))

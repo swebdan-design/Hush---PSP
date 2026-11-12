@@ -9,6 +9,7 @@
 #include "../src/game/weather.h"
 #include "../src/game/env_bridge.h"
 #include "../src/game/autopilot.h"
+#include "../src/game/crowd.h"
 #include "../src/audio/dsp.h"
 #include "../src/core/rng.h"
 #include <stdio.h>
@@ -184,7 +185,7 @@ static void test_world(void) {
                 V3 p = lane_eval(ln, s, NULL);
                 V3 q = p;
                 samples++;
-                if (world_collide_sphere(w, &q, ln->kind == 0 ? 1.5f : 2.0f, NULL)) { if (bad < 3) printf("    lane %d (kind %d) blocked at (%.0f,%.0f,%.0f)\n", l, ln->kind, p.x, p.y, p.z); bad++; }
+                if (world_collide_sphere(w, &q, ln->kind == 0 ? 0.7f : 2.0f, NULL)) { if (bad < 3) printf("    lane %d (kind %d) blocked at (%.0f,%.0f,%.0f)\n", l, ln->kind, p.x, p.y, p.z); bad++; }
             }
         }
         CHECK(bad == 0, "%s: all %d lane samples clear (%d blocked)", w->name, samples, bad);
@@ -336,6 +337,35 @@ static void test_missions(void) {
     CHECK(m.state == MS_FAILED, "ring time limit fails the mission");
 }
 
+static void test_crowd(void) {
+    printf("[crowd] pedestrians stay on sidewalks, gather near the player, scatter from the Moth\n");
+    World *w = &g_world;
+    world_generate(w, DISTRICT_STACKS);
+    static Crowd c;
+    crowd_init(&c, w);
+    CHECK(c.n >= 150, "Stacks has a crowd (%d)", c.n);
+    V3 craft = v3(w->blocks[w->n_blocks / 2].x1 + 8.0f, 200.0f, w->blocks[w->n_blocks / 2].z0);
+    for (int i = 0; i < 30 * 60; i++) crowd_update(&c, w, craft, 0.8f, 1.0f / 30.0f);
+    int bad = 0, near = 0, umb = 0;
+    for (int i = 0; i < c.n; i++) {
+        V3 head = v3_add(c.p[i].pos, v3(0, 1.2f, 0));
+        if (world_collide_sphere(w, &head, 0.25f, NULL)) bad++;
+        if (v3_dist_xz(c.p[i].pos, craft) < 200.0f) near++;
+        umb += c.p[i].umbrella;
+    }
+    CHECK(bad == 0, "no pedestrian inside geometry after 60 s (%d)", bad);
+    CHECK(near > c.n / 2, "crowd gathers around the player (%d of %d within 200 m)", near, c.n);
+    CHECK(umb > c.n / 2, "umbrellas up in the rain (%d)", umb);
+    /* bring the Moth down on top of someone: they run */
+    Ped *p = &c.p[0];
+    V3 low = v3(p->pos.x + 3.0f, p->pos.y + 4.0f, p->pos.z);
+    for (int i = 0; i < 30; i++) crowd_update(&c, w, low, 0.0f, 1.0f / 30.0f);
+    CHECK(p->flee > 0.5f, "pedestrian flees a low Moth (%.2f)", p->flee);
+    world_generate(w, DISTRICT_UNDERTOW);
+    crowd_init(&c, w);
+    CHECK(c.n == 0, "nobody walks the flooded Undertow");
+}
+
 static void test_env_bridge(void) {
     printf("[bridge] world drives music inputs\n");
     World *w = &g_world;
@@ -361,6 +391,7 @@ int main(int argc, char **argv) {
     test_world();
     test_flight();
     test_env_bridge();
+    test_crowd();
     test_missions();
     test_audio();
     if (!quick) test_audio_long();

@@ -10,6 +10,7 @@
 #include "../game/progress.h"
 #include "../game/env_bridge.h"
 #include "../game/autopilot.h"
+#include "../game/crowd.h"
 #include "../audio/music.h"
 #include "../audio/sfx.h"
 #include "../platform/psp/input.h"
@@ -38,6 +39,7 @@ typedef struct {
     World world;
     int world_district;      /* -1 = none loaded */
     Traffic traffic;
+    Crowd crowd;
     Weather wx;
     Craft craft;
     Camera cam;

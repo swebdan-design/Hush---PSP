@@ -27,7 +27,7 @@ void rw_draw_world(const World *w, const Atmos *a, float time);
 void rw_draw_traffic(const World *w, const Traffic *t, const Atmos *a, float time);
 /* emissive point lights batched until rw_flush_lights */
 void rw_light(V3 p, float size, uint32_t color, float alpha);
-void rw_draw_world_lights(const World *w, const Atmos *a, float time);
+void rw_draw_world_lights(const World *w, const Atmos *a, float time, float wet);
 void rw_flush_lights(const World *w, const Atmos *a);
 void rw_draw_effects(const World *w, const Weather *wx, const Atmos *a, float time, float dt, int rain_density);
 const RenderStats *rw_stats(void);

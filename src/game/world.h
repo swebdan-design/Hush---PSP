@@ -9,24 +9,26 @@
 
 #define WORLD_HALF 620.0f          /* district spans [-WORLD_HALF, WORLD_HALF] in x and z */
 #define WORLD_CEILING 460.0f
-#define MAX_BOXES 2000
+#define MAX_BOXES 2400
 #define MAX_CYLS 72
-#define MAX_LIGHTS 900
-#define MAX_ADS 40
+#define MAX_LIGHTS 1600
+#define MAX_ADS 720
+#define MAX_BLOCKS 420
+#define MAX_NEON 1400
 #define MAX_LANES 28
 #define LANE_PTS 12
 #define MAX_POIS 48
 #define MAX_VENTS 20
 #define GRID_N 32
 #define GRID_CELL (2.0f * WORLD_HALF / GRID_N)
-#define GRID_MAX_REFS 12000
+#define GRID_MAX_REFS 16000
 
 typedef struct { float x0, y0, z0, x1, y1, z1; } Aabb;
 
 /* facade/texture styles */
-enum { TEX_GLASS = 0, TEX_RESIDENTIAL, TEX_INDUSTRIAL, TEX_DERELICT, TEX_CONCRETE, TEX_METAL, TEX_GARDEN, TEX_COUNT };
+enum { TEX_GLASS = 0, TEX_RESIDENTIAL, TEX_INDUSTRIAL, TEX_DERELICT, TEX_CONCRETE, TEX_METAL, TEX_GARDEN, TEX_SHOP, TEX_COUNT };
 /* box kinds affect rendering details only */
-enum { BOX_BUILDING = 0, BOX_TIER, BOX_ROOF_DETAIL, BOX_HIGHWAY, BOX_WALKWAY, BOX_PIPE, BOX_PAD, BOX_GANTRY, BOX_LANDMARK, BOX_RUIN };
+enum { BOX_BUILDING = 0, BOX_TIER, BOX_ROOF_DETAIL, BOX_HIGHWAY, BOX_WALKWAY, BOX_PIPE, BOX_PAD, BOX_GANTRY, BOX_LANDMARK, BOX_RUIN, BOX_SIDEWALK };
 
 typedef struct {
     Aabb b;
@@ -39,7 +41,10 @@ typedef struct { float x, z, r0, r1, y0, y1; uint8_t kind, sides; } Cyl;
 enum { LT_AVIATION = 0, LT_WINDOW, LT_BEACON, LT_WARNING, LT_STREET, LT_SIGN, LT_LANDMARK, LT_WATER };
 typedef struct { V3 p; float size; uint32_t color; uint8_t kind, blink; float phase; } Light;
 
-typedef struct { V3 p; float w, h; uint8_t axis; int8_t facing; uint8_t ad; uint8_t flicker; } Ad;   /* axis 0: quad in XY plane (faces +/-z), 1: ZY plane */
+/* axis 0: quad in XY plane (faces +/-z), 1: ZY plane. sheet: 0 billboard atlas, 1 blade neon sign, 2 flat neon sign */
+typedef struct { V3 p; float w, h; uint8_t axis; int8_t facing; uint8_t ad; uint8_t flicker; uint8_t sheet; } Ad;
+typedef struct { float x0, z0, x1, z1; } Block;
+typedef struct { V3 a, b; uint32_t color; uint8_t flicker; } Neon;
 
 typedef struct { V3 pts[LANE_PTS]; int n; float speed, len; uint8_t kind, loop, count; float seglen[LANE_PTS]; } Lane;
 
@@ -63,6 +68,9 @@ typedef struct {
     Lane lanes[MAX_LANES]; int n_lanes;
     Poi pois[MAX_POIS]; int n_pois;
     Vent vents[MAX_VENTS]; int n_vents;
+    Block blocks[MAX_BLOCKS]; int n_blocks;   /* city blocks with sidewalks (pedestrian paths) */
+    Neon neon[MAX_NEON]; int n_neon;
+    float pitch;                               /* street grid spacing */
 
     /* collision grid: per cell list of box indices (cyls are tested directly) */
     uint16_t cell_start[GRID_N * GRID_N + 1];

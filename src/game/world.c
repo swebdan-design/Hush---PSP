@@ -68,6 +68,19 @@ static void add_ad(World *w, V3 p, float wd, float ht, int axis, int facing, int
     a->p = p; a->w = wd; a->h = ht; a->axis = (uint8_t)axis; a->facing = (int8_t)facing; a->ad = (uint8_t)ad; a->flicker = (uint8_t)flicker;
 }
 
+static void add_sign(World *w, V3 p, float wd, float ht, int axis, int facing, int sheet, int id, int flicker) {
+    if (w->n_ads >= MAX_ADS) return;
+    Ad *a = &w->ads[w->n_ads++];
+    a->p = p; a->w = wd; a->h = ht; a->axis = (uint8_t)axis; a->facing = (int8_t)facing; a->ad = (uint8_t)id;
+    a->flicker = (uint8_t)flicker; a->sheet = (uint8_t)sheet;
+}
+
+static void add_neon(World *w, V3 a, V3 b, uint32_t c, int flicker) {
+    if (w->n_neon >= MAX_NEON) return;
+    Neon *n = &w->neon[w->n_neon++];
+    n->a = a; n->b = b; n->color = c; n->flicker = (uint8_t)flicker;
+}
+
 static Lane *add_lane(World *w, const V3 *pts, int n, float speed, int kind, int loop, int count) {
     if (w->n_lanes >= MAX_LANES || n < 2) return NULL;
     Lane *l = &w->lanes[w->n_lanes++];
@@ -111,6 +124,61 @@ V3 lane_eval(const Lane *l, float s, V3 *tangent) {
 
 static const uint32_t col_red = RGBA(255, 40, 30, 255), col_amber = RGBA(255, 170, 60, 255), col_white = RGBA(220, 230, 255, 255);
 static const uint32_t col_cyan = RGBA(90, 210, 255, 255), col_violet = RGBA(170, 110, 255, 255), col_green = RGBA(120, 255, 170, 255);
+static const uint32_t neon_cols[7] = { RGBA(255, 60, 190, 255), RGBA(60, 230, 255, 255), RGBA(160, 100, 255, 255), RGBA(255, 90, 140, 255),
+                                       RGBA(150, 255, 100, 255), RGBA(255, 175, 60, 255), RGBA(255, 60, 60, 255) };
+
+/* Street-level and rooftop dressing. Uses its own random stream seeded from the lot
+ * position, so adding or changing decor never moves a single building. */
+static void decorate(World *w, float x0, float z0, float x1, float z1, float base, float top, float rx0, float rz0, float rx1, float rz1, int district) {
+    if (district == DISTRICT_UNDERTOW) return;
+    Rng d;
+    rng_seed(&d, w->gen_seed ^ ((uint32_t)(int)(x0 * 8.0f) * 73856093u) ^ ((uint32_t)(int)(z0 * 8.0f) * 19349663u), 0xDEC0u);
+    float p_blade = district == DISTRICT_STACKS ? 0.55f : (district == DISTRICT_CIVIC ? 0.45f : 0.2f);
+    float p_flat = district == DISTRICT_WORKS ? 0.25f : 0.6f;
+    float p_roof = district == DISTRICT_STACKS ? 0.45f : (district == DISTRICT_CIVIC ? 0.55f : 0.3f);
+    /* hanging blade signs near a corner, sticking out into the street */
+    for (int k = 0; k < 2; k++) {
+        if (!rng_chance(&d, k == 0 ? p_blade : p_blade * 0.5f)) continue;
+        int face = rng_int(&d, 4);
+        int id = rng_int(&d, 8);
+        float y = base + 6.0f + rng_float(&d) * h_minf(26.0f, top - base - 10.0f);
+        if (y > top - 4.0f) continue;
+        uint32_t col = neon_cols[id % 7];
+        int corner = rng_chance(&d, 0.5f);
+        V3 p;
+        if (face < 2) {   /* on an x face: blade lies in the XY plane */
+            float fx = face == 0 ? x1 + 1.0f : x0 - 1.0f;
+            p = v3(fx, y, corner ? z0 + 2.0f : z1 - 2.0f);
+            add_sign(w, p, 1.5f, 6.0f, 0, face == 0 ? 1 : -1, 1, id, rng_chance(&d, 0.2f));
+        } else {
+            float fz = face == 2 ? z1 + 1.0f : z0 - 1.0f;
+            p = v3(corner ? x0 + 2.0f : x1 - 2.0f, y, fz);
+            add_sign(w, p, 1.5f, 6.0f, 1, face == 2 ? 1 : -1, 1, id, rng_chance(&d, 0.2f));
+        }
+        add_light(w, p, 4.0f, col, LT_SIGN, 0, 0);
+    }
+    /* flat shop signs above the storefront band */
+    if (rng_chance(&d, p_flat) && top - base > 12.0f) {
+        int face = rng_int(&d, 4), id = rng_int(&d, 16);
+        float y = base + 8.6f;
+        if (face < 2) add_sign(w, v3(face == 0 ? x1 + 0.3f : x0 - 0.3f, y, (z0 + z1) * 0.5f), h_minf(z1 - z0 - 2.0f, 9.0f), 2.6f, 1, face == 0 ? 1 : -1, 2, id, 0);
+        else add_sign(w, v3((x0 + x1) * 0.5f, y, face == 2 ? z1 + 0.3f : z0 - 0.3f), h_minf(x1 - x0 - 2.0f, 9.0f), 2.6f, 0, face == 2 ? 1 : -1, 2, id, 0);
+    }
+    /* neon outline around the roof, sometimes a vertical strip down a corner */
+    if (top - base > 40.0f && rng_chance(&d, p_roof)) {
+        uint32_t c = neon_cols[rng_int(&d, 7)];
+        float y = top + 0.25f;
+        add_neon(w, v3(rx0, y, rz0), v3(rx1, y, rz0), c, 0);
+        add_neon(w, v3(rx1, y, rz0), v3(rx1, y, rz1), c, 0);
+        add_neon(w, v3(rx1, y, rz1), v3(rx0, y, rz1), c, 0);
+        add_neon(w, v3(rx0, y, rz1), v3(rx0, y, rz0), c, 0);
+        if (rng_chance(&d, 0.35f)) {
+            float cx = rng_chance(&d, 0.5f) ? x0 - 0.15f : x1 + 0.15f, cz = rng_chance(&d, 0.5f) ? z0 - 0.15f : z1 + 0.15f;
+            float yb = base + 10.0f + rng_float(&d) * 20.0f;
+            add_neon(w, v3(cx, yb, cz), v3(cx, h_minf(top - 2.0f, yb + 40.0f + rng_float(&d) * 60.0f), cz), neon_cols[rng_int(&d, 7)], rng_chance(&d, 0.3f));
+        }
+    }
+}
 
 static int near_lane(const World *w, float x, float z, float r) {
     for (int i = 0; i < w->n_lanes; i++) {
@@ -157,6 +225,7 @@ static void building(World *w, Rng *r, float x0, float z0, float x1, float z1, f
         add_box(w, rx - 0.6f, y, rz - 0.6f, rx + 0.6f, y + ah, rz + 0.6f, TEX_METAL, BOX_ROOF_DETAIL, tint, 1);
         add_light(w, v3(rx, y + ah + 0.8f, rz), 3.0f, col_red, LT_AVIATION, 1, rng_float(r));
     }
+    decorate(w, x0, z0, x1, z1, base, y, cx0, cz0, cx1, cz1, district);
     if (h > 140.0f) {
         /* corner aviation lights */
         add_light(w, v3(cx0, y + 0.5f, cz0), 2.2f, col_red, LT_AVIATION, 2, rng_float(r));
@@ -168,6 +237,7 @@ static void building(World *w, Rng *r, float x0, float z0, float x1, float z1, f
 static void fill_grid(World *w, Rng *r, int district, float pitch, float street, float base,
                       float (*height_fn)(Rng *, float, float), int (*tex_fn)(Rng *, float, float), int max_tiers, float lot_prob) {
     int kmax = (int)(WORLD_HALF / pitch);
+    w->pitch = pitch;
     for (int i = -kmax; i < kmax; i++) {
         for (int j = -kmax; j < kmax; j++) {
             float bx0 = (float)i * pitch + street * 0.5f, bx1 = (float)(i + 1) * pitch - street * 0.5f;
@@ -179,6 +249,11 @@ static void fill_grid(World *w, Rng *r, int district, float pitch, float street,
             if ((j + 1) % 3 == 0) bz1 -= street * 0.4f;
             if (bx1 > WORLD_HALF - 10 || bz1 > WORLD_HALF - 10 || bx0 < -WORLD_HALF + 10 || bz0 < -WORLD_HALF + 10) continue;
             if (reserved(bx0, bz0, bx1, bz1)) continue;
+            if (district != DISTRICT_UNDERTOW && w->n_blocks < MAX_BLOCKS) {
+                Block *bl = &w->blocks[w->n_blocks++];
+                bl->x0 = bx0; bl->z0 = bz0; bl->x1 = bx1; bl->z1 = bz1;
+                add_box(w, bx0, base, bz0, bx1, base + 0.35f, bz1, TEX_CONCRETE, BOX_SIDEWALK, 60, 0);   /* raised sidewalk */
+            }
             int split = rng_int(r, 3); /* 0: whole, 1: split x, 2: quarters */
             float lots[4][4];
             int nl = 0;
@@ -594,6 +669,65 @@ static void build_grid(World *w) {
     if (w->n_refs > GRID_MAX_REFS) w->n_refs = GRID_MAX_REFS;
 }
 
+static int lane_clear(const World *w, const Lane *l, float r) {
+    for (float s2 = 0; s2 < l->len; s2 += 4.0f) {
+        V3 tan;
+        V3 p = lane_eval(l, s2, &tan);
+        V3 side = v3(tan.z, 0, -tan.x);
+        for (int o = -1; o <= 1; o++) {
+            V3 q = v3_madd(p, side, 3.0f * (float)o);
+            if (world_collide_sphere(w, &q, r, NULL)) return 0;
+        }
+    }
+    return 1;
+}
+
+/* Ground traffic along the street grid. Candidate rectangles that would clip any
+ * structure (highway pillars, station legs, corridor walls...) are rejected. */
+static void add_street_lanes(World *w) {
+    if (w->id == DISTRICT_UNDERTOW || w->pitch <= 0) return;
+    float y = w->ground_y + 0.8f;
+    int added = 0;
+    for (int k = 1; k <= 5 && added < 5; k++) {
+        for (int shift = 0; shift < 3 && added < 5; shift++) {
+            float c = (float)(shift == 0 ? 0 : (shift == 1 ? -1 : 1)) * w->pitch;
+            float h = (float)k * w->pitch;
+            if (h + h_absf(c) > WORLD_HALF - 30.0f) continue;
+            if (w->n_lanes >= MAX_LANES) return;
+            int before = w->n_lanes;
+            rect_lane(w, c - h, -h, c + h, h, y, 13.0f + 2.0f * (float)k, 0, (int)(8.0f * h / w->pitch) + 2, (k + shift) & 1);
+            if (w->n_lanes > before && !lane_clear(w, &w->lanes[w->n_lanes - 1], 0.7f)) w->n_lanes--;
+            else if (w->n_lanes > before) added++;
+        }
+    }
+}
+
+/* Large holographic billboards on tall towers in every district. */
+static void add_city_billboards(World *w) {
+    Rng r;
+    rng_seed(&r, w->gen_seed, 0xB111u);
+    float p = w->id == DISTRICT_CIVIC ? 0.3f : (w->id == DISTRICT_STACKS ? 0.22f : (w->id == DISTRICT_WORKS ? 0.12f : 0.04f));
+    int n = w->n_boxes;
+    for (int i = 0; i < n && w->n_ads < MAX_ADS - 4; i++) {
+        const Box *b = &w->boxes[i];
+        if (b->kind != BOX_BUILDING || b->b.y1 - b->b.y0 < 60.0f) continue;
+        float roll = rng_float(&r);
+        int face = rng_int(&r, 4), id = rng_int(&r, 12), fl = rng_chance(&r, 0.3f);
+        float hfrac = 0.45f + 0.3f * rng_float(&r);
+        if (roll > p) continue;
+        float y = b->b.y0 + (b->b.y1 - b->b.y0) * hfrac;
+        if (face < 2) {
+            float wd = h_minf(b->b.z1 - b->b.z0 - 6.0f, 30.0f);
+            if (wd < 10.0f) continue;
+            add_sign(w, v3(face == 0 ? b->b.x1 + 0.6f : b->b.x0 - 0.6f, y, (b->b.z0 + b->b.z1) * 0.5f), wd, wd * 0.5f, 1, face == 0 ? 1 : -1, 0, id, fl);
+        } else {
+            float wd = h_minf(b->b.x1 - b->b.x0 - 6.0f, 30.0f);
+            if (wd < 10.0f) continue;
+            add_sign(w, v3((b->b.x0 + b->b.x1) * 0.5f, y, face == 2 ? b->b.z1 + 0.6f : b->b.z0 - 0.6f), wd, wd * 0.5f, 0, face == 2 ? 1 : -1, 0, id, fl);   /* readable from outside: +z face runs +x left-to-right */
+        }
+    }
+}
+
 void world_generate(World *w, int district) {
     memset(w, 0, sizeof(*w));
     g_nres = 0;
@@ -619,6 +753,8 @@ void world_generate(World *w, int district) {
         }
     }
     build_grid(w);
+    add_city_billboards(w);
+    add_street_lanes(w);
 }
 
 const Poi *world_poi(const World *w, const char *name) {

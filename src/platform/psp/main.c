@@ -90,6 +90,7 @@ void app_load_district(int d) {
 static void reset_flight(void) {
     App *a = &g_app;
     traffic_init(&a->traffic, &a->world);
+    crowd_init(&a->crowd, &a->world);
     memset(&a->craft, 0, sizeof(a->craft));
     craft_apply_upgrades(&a->craft, a->prog.boost_level, a->prog.hull_level);
     craft_init(&a->craft, a->world.spawn, a->world.spawn_yaw);
@@ -195,7 +196,20 @@ static void autotest_tick(float dt) {
     case 3: a->prog.drift_district = DISTRICT_STACKS; a->prog.drift_weather = WX_HEAVY_RAIN; app_start_drift(); printf("AUTOTEST: drift started\n"); NEXT(); break;
     case 4: in->s_ly = 0.9f; in->s_lx = 0.2f; if (g_step_t > 2) in->s_held = PSP_CTRL_RTRIGGER | PSP_CTRL_TRIANGLE;
         if (g_step_t > 6.0f) { shot("drift_stacks_rain"); perf("drift_stacks"); NEXT(); } break;
-    case 5: in->s_ly = 0.6f; in->s_held = PSP_CTRL_CROSS; if (g_step_t > 4.0f) { shot("drift_low"); perf("drift_low"); NEXT(); } break;
+    case 5: in->s_ly = 0.6f; in->s_held = PSP_CTRL_CROSS; if (g_step_t > 4.0f) { shot("drift_low"); perf("drift_low"); g_step = 50; g_step_t = 0; } break;
+    case 50: {   /* street level: put the Moth in the middle of a Stacks street, nose along the street */
+        const Block *bl = &a->world.blocks[a->world.n_blocks / 2 + 7];
+        float street = a->world.pitch - (bl->x1 - bl->x0);
+        a->craft.pos = v3(bl->x1 + street * 0.5f, a->world.ground_y + 5.0f, (bl->z0 + bl->z1) * 0.5f - 20.0f);
+        a->craft.vel = v3(0, 0, 0); a->craft.yaw = 0.0f;
+        camera_init(&a->cam, &a->craft);
+        a->cam.mode = CAM_CHASE;
+        printf("AUTOTEST: street level at (%.0f, %.0f, %.0f), crowd %d\n", a->craft.pos.x, a->craft.pos.y, a->craft.pos.z, a->crowd.n);
+        NEXT(); break;
+    }
+    case 51: in->s_ly = 0.25f; if (g_step_t > 3.0f) { shot("street_chase"); perf("street"); a->cam.mode = CAM_COCKPIT; NEXT(); } break;
+    case 52: in->s_ly = 0.2f; if (g_step_t > 2.0f) { shot("street_cockpit"); a->cam.mode = CAM_CINEMATIC; NEXT(); } break;
+    case 53: if (g_step_t > 3.0f) { shot("street_cinematic"); a->cam.mode = CAM_CHASE; g_step = 6; g_step_t = 0; } break;
     case 6: a->console_return = ST_PLAY; a->console_overlay = 1; a->console_page = 0; a->console_sel = 4; app_set_state(ST_CONSOLE); NEXT(); break;
     case 7: if (g_step_t > 0.5f && g_step_t < 1.5f) in->s_held = PSP_CTRL_LEFT; /* reduce percussion */
         if (g_step_t > 3.0f) { shot("console_mix"); printf("AUTOTEST: percussion volume now %.2f\n", a->prog.music.vol[VOL_PERC]); a->console_page = 1; NEXT(); } break;

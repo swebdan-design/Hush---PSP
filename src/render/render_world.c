@@ -80,6 +80,22 @@ static void wall(int ch, int tex, V3 o, V3 h, float L, float y0, float y1, V3 n,
     }
 }
 
+/* shopfront band: the 512x64 strip holds four 8 m fronts; v spans the band height */
+static void shop_band(int ch, V3 o, V3 h, float L, float y0, float H, float uoff) {
+    int cols = (int)ceilf(L / 16.0f);
+    if (cols < 1) cols = 1;
+    float dl = L / (float)cols;
+    uint32_t c = RGBA(235, 232, 240, 255);
+    for (int k = 0; k < cols; k++) {
+        float s0 = dl * (float)k, s1 = s0 + dl;
+        V3 a = v3_madd(o, h, s0); a.y = y0;
+        V3 b = v3_madd(o, h, s1); b.y = y0;
+        V3 cc = b; cc.y = y0 + H;
+        V3 d = a; d.y = y0 + H;
+        quad(ch, TEX_SHOP, a, b, cc, d, uoff + s0 / 32.0f, 1.0f, uoff + s1 / 32.0f, 0.0f, c, c, c, c);
+    }
+}
+
 static void tess_box(const World *w, const Box *bx) {
     const Aabb *b = &bx->b;
     int ch = chunk_of((b->x0 + b->x1) * 0.5f, (b->z0 + b->z1) * 0.5f);
@@ -97,6 +113,17 @@ static void tess_box(const World *w, const Box *bx) {
     float g = w->ground_y;
     float y0 = b->y0, y1 = b->y1;
     if (w->water_y > y0 && w->water_y < y1) y0 = h_maxf(y0, w->water_y - 6.0f);
+    /* street level: a band of lit shopfronts on the ground floor of city buildings */
+    int shops = bx->kind == BOX_BUILDING && w->id != DISTRICT_UNDERTOW && b->y0 <= g + 0.5f && y1 - y0 > 12.0f &&
+                (w->id != DISTRICT_WORKS || (bx->tint % 3) == 0) && tex != TEX_METAL;
+    if (shops) {
+        const float H = 7.0f;
+        shop_band(ch, v3(b->x1, 0, b->z1), v3(0, 0, -1), b->z1 - b->z0, y0, H, tint);
+        shop_band(ch, v3(b->x0, 0, b->z0), v3(0, 0, 1), b->z1 - b->z0, y0, H, tint + 0.3f);
+        shop_band(ch, v3(b->x0, 0, b->z1), v3(1, 0, 0), b->x1 - b->x0, y0, H, tint + 0.55f);
+        shop_band(ch, v3(b->x1, 0, b->z0), v3(-1, 0, 0), b->x1 - b->x0, y0, H, tint + 0.8f);
+        y0 += H;
+    }
     wall(ch, tex, v3(b->x1, 0, b->z1), v3(0, 0, -1), b->z1 - b->z0, y0, y1, v3(1, 0, 0), g, tint, uoff);
     wall(ch, tex, v3(b->x0, 0, b->z0), v3(0, 0, 1), b->z1 - b->z0, y0, y1, v3(-1, 0, 0), g, tint, uoff + 0.5f);
     wall(ch, tex, v3(b->x0, 0, b->z1), v3(1, 0, 0), b->x1 - b->x0, y0, y1, v3(0, 0, 1), g, tint, uoff + 0.25f);
@@ -190,7 +217,8 @@ void rw_build(const World *w) {
 
 void rw_atmos(const World *w, const Weather *wx, Atmos *a) {
     static const uint32_t zen[DISTRICT_COUNT] = { RGBA(6, 9, 18, 255), RGBA(12, 8, 8, 255), RGBA(6, 11, 15, 255), RGBA(4, 7, 7, 255) };
-    static const uint32_t hor[DISTRICT_COUNT] = { RGBA(30, 40, 62, 255), RGBA(58, 38, 30, 255), RGBA(26, 44, 50, 255), RGBA(18, 28, 26, 255) };
+    /* neon light pollution: violet-blue over Civic, red smog over the Works, magenta haze in the Stacks */
+    static const uint32_t hor[DISTRICT_COUNT] = { RGBA(38, 40, 80, 255), RGBA(72, 36, 38, 255), RGBA(56, 32, 66, 255), RGBA(18, 30, 30, 255) };
     uint32_t z = zen[w->id], h = hor[w->id];
     /* twilight: a bruised violet-amber horizon */
     z = col_lerp(z, RGBA(28, 22, 52, 255), wx->tod * 0.8f);
@@ -265,6 +293,9 @@ static void ground_plane(const World *w, const Atmos *a, float y, const Tex *t, 
     (void)w; (void)a;
 }
 
+static void draw_neon(const World *w, const Atmos *a, float time);
+static void draw_lane_marks(const World *w, const Atmos *a);
+
 void rw_draw_world(const World *w, const Atmos *a, float time) {
     float far_d = a->fog_far + 40.0f;
     g_tanv = tanf(gfx_cam_fov() * 0.5f * H_PI / 180.0f);
@@ -309,28 +340,99 @@ void rw_draw_world(const World *w, const Atmos *a, float time) {
         uint32_t wc = col_lerp(RGBA(70, 110, 120, 210), a->fog_color, 0.35f);
         ground_plane(w, a, w->water_y, &g_tex.water, wc, 1.0f / 48.0f, time * 0.01f, time * 0.004f);
     }
-    /* advertising panels: emissive, fogged a little less than buildings */
+    /* billboards and neon signs: emissive, fogged a little less than buildings, two texture passes */
     if (w->n_ads) {
         gfx_fog(1, a->fog_near * 1.6f, a->fog_far * 1.35f, a->fog_color);
-        gfx_bind(&g_tex.ads, 1, 0);
-        VtxTCP *v = (VtxTCP *)sceGuGetMemory(w->n_ads * 6 * (int)sizeof(VtxTCP));
-        int k = 0;
-        for (int i = 0; i < w->n_ads; i++) {
-            const Ad *ad = &w->ads[i];
-            if (!sphere_visible(ad->p, ad->w, far_d)) continue;
-            float fl = 1.0f;
-            if (ad->flicker) { float ph = fmodf(time * 1.7f + (float)i * 0.37f, 7.0f); fl = (ph > 6.6f && ph < 6.75f) ? 0.15f : (ph > 6.8f && ph < 6.85f ? 0.3f : 1.0f); }
-            uint32_t c = col_scale(RGBA(255, 255, 255, 255), fl * 0.95f);
-            int id = ad->ad % 12;
-            float u0 = (float)(id % 2) * 0.5f, u1 = u0 + 0.5f, v0 = (float)(id / 2) * (64.0f / 512.0f), v1 = v0 + 64.0f / 512.0f;
-            V3 hdir = ad->axis ? v3(0, 0, (float)-ad->facing) : v3((float)ad->facing, 0, 0);
-            V3 A = v3_madd(ad->p, hdir, -ad->w * 0.5f), B = v3_madd(ad->p, hdir, ad->w * 0.5f);
-            V3 Au = A, Bu = B; A.y -= ad->h * 0.5f; B.y -= ad->h * 0.5f; Au.y += ad->h * 0.5f; Bu.y += ad->h * 0.5f;
-            VtxTCP q[4] = { {u0, v1, c, A.x, A.y, A.z}, {u1, v1, c, B.x, B.y, B.z}, {u1, v0, c, Bu.x, Bu.y, Bu.z}, {u0, v0, c, Au.x, Au.y, Au.z} };
-            v[k++] = q[0]; v[k++] = q[1]; v[k++] = q[2]; v[k++] = q[0]; v[k++] = q[2]; v[k++] = q[3];
+        V3 eye = gfx_cam_pos();
+        for (int pass = 0; pass < 2; pass++) {
+            gfx_bind(pass == 0 ? &g_tex.ads : &g_tex.signs, 1, 0);
+            VtxTCP *v = (VtxTCP *)sceGuGetMemory(w->n_ads * 6 * (int)sizeof(VtxTCP));
+            int k = 0;
+            for (int i = 0; i < w->n_ads; i++) {
+                const Ad *ad = &w->ads[i];
+                if ((ad->sheet != 0) != (pass == 1)) continue;
+                if (ad->sheet && v3_len2(v3_sub(ad->p, eye)) > 300.0f * 300.0f) continue;
+                if (!sphere_visible(ad->p, h_maxf(ad->w, ad->h), far_d)) continue;
+                float fl = 1.0f;
+                if (ad->flicker) { float ph = fmodf(time * 1.7f + (float)i * 0.37f, 7.0f); fl = (ph > 6.6f && ph < 6.75f) ? 0.15f : (ph > 6.8f && ph < 6.85f ? 0.3f : 1.0f); }
+                uint32_t c = col_scale(RGBA(255, 255, 255, 255), fl * 0.97f);
+                float u0, u1, v0, v1;
+                if (ad->sheet == 0) { int id = ad->ad % 12; u0 = (float)(id % 2) * 0.5f; u1 = u0 + 0.5f; v0 = (float)(id / 2) * (64.0f / 512.0f); v1 = v0 + 64.0f / 512.0f; }
+                else if (ad->sheet == 1) { int id = ad->ad % 8; u0 = (float)id * 0.125f; u1 = u0 + 0.125f; v0 = 0.0f; v1 = 0.5f; }
+                else { int id = ad->ad % 16; u0 = (float)(id % 4) * 0.25f; u1 = u0 + 0.25f; v0 = 0.5f + (float)(id / 4) * 0.125f; v1 = v0 + 0.125f; }
+                V3 hdir = ad->axis ? v3(0, 0, (float)-ad->facing) : v3((float)ad->facing, 0, 0);
+                V3 A = v3_madd(ad->p, hdir, -ad->w * 0.5f), B = v3_madd(ad->p, hdir, ad->w * 0.5f);
+                V3 Au = A, Bu = B; A.y -= ad->h * 0.5f; B.y -= ad->h * 0.5f; Au.y += ad->h * 0.5f; Bu.y += ad->h * 0.5f;
+                VtxTCP q[4] = { {u0, v1, c, A.x, A.y, A.z}, {u1, v1, c, B.x, B.y, B.z}, {u1, v0, c, Bu.x, Bu.y, Bu.z}, {u0, v0, c, Au.x, Au.y, Au.z} };
+                v[k++] = q[0]; v[k++] = q[1]; v[k++] = q[2]; v[k++] = q[0]; v[k++] = q[2]; v[k++] = q[3];
+            }
+            if (k) sceGuDrawArray(GU_TRIANGLES, VT_TCP | GU_TRANSFORM_3D, k, 0, v);
         }
-        if (k) sceGuDrawArray(GU_TRIANGLES, VT_TCP | GU_TRANSFORM_3D, k, 0, v);
     }
+    draw_neon(w, a, time);
+    draw_lane_marks(w, a);
+}
+
+/* neon tubes: roof outlines and corner strips, additive 1-pixel lines */
+static void draw_neon(const World *w, const Atmos *a, float time) {
+    if (!w->n_neon) return;
+    V3 eye = gfx_cam_pos();
+    float far2 = a->fog_far * 1.3f;
+    far2 *= far2;
+    gfx_no_tex();
+    sceGuDepthMask(GU_TRUE);
+    gfx_fog(1, a->fog_near * 1.8f, a->fog_far * 1.4f, a->fog_color);
+    gfx_blend_add();
+    VtxCP *v = (VtxCP *)sceGuGetMemory(w->n_neon * 2 * (int)sizeof(VtxCP));
+    int k = 0;
+    for (int i = 0; i < w->n_neon; i++) {
+        const Neon *n = &w->neon[i];
+        V3 mid = v3_scale(v3_add(n->a, n->b), 0.5f);
+        if (v3_len2(v3_sub(mid, eye)) > far2) continue;
+        float al = 1.0f;
+        if (n->flicker && fmodf(time * 2.3f + (float)i * 0.71f, 5.0f) > 4.6f) al = 0.2f;
+        uint32_t c = col_alpha(n->color, al);
+        v[k].color = c; v[k].x = n->a.x; v[k].y = n->a.y; v[k].z = n->a.z; k++;
+        v[k].color = c; v[k].x = n->b.x; v[k].y = n->b.y; v[k].z = n->b.z; k++;
+    }
+    if (k) sceGuDrawArray(GU_LINES, VT_CP | GU_TRANSFORM_3D, k, 0, v);
+    gfx_blend_alpha();
+    sceGuDepthMask(GU_FALSE);
+}
+
+/* dashed centre lines on the street grid, generated around the camera only when it is low */
+static void draw_lane_marks(const World *w, const Atmos *a) {
+    if (w->pitch <= 0 || w->water_y > w->ground_y) return;
+    V3 eye = gfx_cam_pos();
+    if (eye.y - w->ground_y > 90.0f) return;
+    const float R = 150.0f, y = w->ground_y + 0.06f;
+    int kx0 = (int)floorf((eye.x - R) / w->pitch), kx1 = (int)ceilf((eye.x + R) / w->pitch);
+    int kz0 = (int)floorf((eye.z - R) / w->pitch), kz1 = (int)ceilf((eye.z + R) / w->pitch);
+    int lines = (kx1 - kx0 + 1) + (kz1 - kz0 + 1);
+    int per = (int)(2.0f * R / 9.0f) + 1;
+    VtxCP *v = (VtxCP *)sceGuGetMemory(lines * per * 6 * (int)sizeof(VtxCP));
+    int k = 0;
+    uint32_t c = col_lerp(RGBA(210, 190, 120, 255), a->fog_color, 0.15f);
+    for (int axis = 0; axis < 2; axis++) {
+        int k0 = axis ? kz0 : kx0, k1 = axis ? kz1 : kx1;
+        for (int line = k0; line <= k1; line++) {
+            float fixed = (float)line * w->pitch;
+            if (h_absf(fixed) > WORLD_HALF - 10) continue;
+            float start = floorf(((axis ? eye.x : eye.z) - R) / 9.0f) * 9.0f;
+            for (int d = 0; d < per; d++) {
+                float s0 = start + (float)d * 9.0f, s1 = s0 + 3.5f;
+                V3 A, B, C, D;
+                if (axis == 0) { A = v3(fixed - 0.12f, y, s0); B = v3(fixed + 0.12f, y, s0); C = v3(fixed + 0.12f, y, s1); D = v3(fixed - 0.12f, y, s1); }
+                else { A = v3(s0, y, fixed - 0.12f); B = v3(s1, y, fixed - 0.12f); C = v3(s1, y, fixed + 0.12f); D = v3(s0, y, fixed + 0.12f); }
+                VtxCP q[4] = { {c, A.x, A.y, A.z}, {c, B.x, B.y, B.z}, {c, C.x, C.y, C.z}, {c, D.x, D.y, D.z} };
+                v[k++] = q[0]; v[k++] = q[1]; v[k++] = q[2]; v[k++] = q[0]; v[k++] = q[2]; v[k++] = q[3];
+            }
+        }
+    }
+    gfx_no_tex();
+    sceGuDisable(GU_CULL_FACE);
+    gfx_fog(1, a->fog_near, a->fog_far, a->fog_color);
+    if (k) sceGuDrawArray(GU_TRIANGLES, VT_CP | GU_TRANSFORM_3D, k, 0, v);
 }
 
 /* ---------------- traffic ---------------- */
@@ -432,20 +534,33 @@ static float blink_fn(int kind, float phase, float t) {
     return 1.0f;
 }
 
-void rw_draw_world_lights(const World *w, const Atmos *a, float time) {
+/* A reflection is drawn where the eye-to-mirror-image ray meets the surface, so it sits
+ * on the water/street (depth-tested like everything else) rather than below it. */
+static void reflect_light(V3 eye, V3 p, float surf, float size, uint32_t c, float alpha) {
+    if (eye.y <= surf + 0.2f) return;
+    V3 m = p; m.y = 2.0f * surf - p.y;
+    float t = (eye.y - surf) / (eye.y - m.y);
+    V3 r = v3_lerp(eye, m, t);
+    r.y = surf + 0.05f;
+    rw_light(r, size * h_clampf(t, 0.15f, 1.0f), c, alpha);
+}
+
+void rw_draw_world_lights(const World *w, const Atmos *a, float time, float wet) {
     float far_d = a->fog_far * 1.45f;
     V3 eye = gfx_cam_pos();
-    int refl = w->water_y > w->ground_y;
+    int water = w->water_y > w->ground_y;
+    /* rain-slick streets mirror the neon: street-level lights reflect in the asphalt */
+    int street_refl = !water && wet > 0.12f && eye.y - w->ground_y < 140.0f;
     for (int i = 0; i < w->n_lights; i++) {
         const Light *l = &w->lights[i];
         float d2 = v3_len2(v3_sub(l->p, eye));
         if (d2 > far_d * far_d) continue;
         float b = blink_fn(l->blink, l->phase, time);
         rw_light(l->p, l->size, l->color, b);
-        if (refl && l->p.y > w->water_y && d2 < 380.0f * 380.0f && g_nfl < MAX_FRAME_LIGHTS) {
-            V3 m = l->p; m.y = 2.0f * w->water_y - l->p.y;
-            rw_light(m, l->size * 1.3f, l->color, b * 0.28f);
-        }
+        if (water && l->p.y > w->water_y && d2 < 380.0f * 380.0f && g_nfl < MAX_FRAME_LIGHTS)
+            reflect_light(eye, l->p, w->water_y, l->size * 1.3f, l->color, b * 0.28f);
+        else if (street_refl && l->p.y < w->ground_y + 40.0f && d2 < 220.0f * 220.0f && g_nfl < MAX_FRAME_LIGHTS)
+            reflect_light(eye, l->p, w->ground_y, l->size * 1.5f, l->color, b * 0.3f * wet);
     }
 }
 
