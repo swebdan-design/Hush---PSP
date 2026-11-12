@@ -191,6 +191,7 @@ static void test_world(void) {
         int lm = 0;
         for (int i = 0; i < w->n_pois; i++) if (w->pois[i].kind == POI_LANDMARK) lm++;
         CHECK(lm >= 1, "%s has a sonic landmark", w->name);
+        printf("  fingerprint %08x\n", world_fingerprint(w));
         printf("  %-13s boxes %4d cyls %2d lights %3d ads %2d lanes %2d pois %2d refs %4d\n", w->name, w->n_boxes, w->n_cyls, w->n_lights, w->n_ads, w->n_lanes, w->n_pois, w->n_refs);
     }
 }

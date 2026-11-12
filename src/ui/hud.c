@@ -164,24 +164,35 @@ static void cockpit_panel(void) {
     /* artificial horizon */
     float hx = SCR_W * 0.5f, hy = py + 37, hr = 30;
     gfx_rect(hx - hr, hy - hr, hr * 2, hr * 2, RGBA(10, 30, 40, 255));
+    {   /* ground half of the attitude ball (pitch only; roll shown by the line) */
+        float gy = h_clampf(hy + c->pitch * 60.0f, hy - hr, hy + hr);
+        gfx_rect(hx - hr, gy, hr * 2, hy + hr - gy, RGBA(40, 30, 18, 255));
+    }
     float roll = c->bank, pitch = c->pitch * 60.0f;
     float dx = cosf(roll) * hr, dy = sinf(roll) * hr;
     gfx_line(hx - dx, hy + pitch - dy, hx + dx, hy + pitch + dy, C_AMBER);
     gfx_line(hx - 10, hy, hx - 3, hy, C_WHITE); gfx_line(hx + 3, hy, hx + 10, hy, C_WHITE);
     gfx_rect_outline(hx - hr, hy - hr, hr * 2, hr * 2, RGBA(80, 90, 100, 255));
+    /* pitch ladder */
+    for (int k = -2; k <= 2; k++) {
+        if (!k) continue;
+        float ly = hy + pitch + (float)k * 12.0f;
+        if (ly < hy - hr + 2 || ly > hy + hr - 2) continue;
+        gfx_line(hx - 8, ly, hx + 8, ly, RGBA(120, 220, 240, 110));
+    }
     /* speed / altitude readouts */
     char buf[32];
     snprintf(buf, sizeof(buf), "%03d", (int)(c->speed * 3.6f));
-    gfx_text(FONT_SMALL, 80, py + 10, "SPEED km/h", C_DIM, ALIGN_LEFT);
-    gfx_text(FONT_LARGE, 80, py + 22, buf, C_CYAN, ALIGN_LEFT);
+    gfx_text(FONT_SMALL, 44, py + 8, "SPD km/h", C_DIM, ALIGN_LEFT);
+    gfx_text(FONT_LARGE, 44, py + 19, buf, c->boosting ? C_AMBER : C_CYAN, ALIGN_LEFT);
     float floor_y = a->world.water_y > a->world.ground_y ? a->world.water_y : a->world.ground_y;
     snprintf(buf, sizeof(buf), "%04d", (int)(c->pos.y - floor_y));
-    gfx_text(FONT_SMALL, 150, py + 10, "ALT m", C_DIM, ALIGN_LEFT);
-    gfx_text(FONT_LARGE, 150, py + 22, buf, C_CYAN, ALIGN_LEFT);
-    bar(80, py + 50, 110, 4, c->hull / c->hull_max, c->hull < 30 ? C_RED : RGBA(120, 220, 160, 255));
-    bar(80, py + 58, 110, 4, c->boost_energy, C_AMBER);
-    gfx_text(FONT_SMALL, 30, py + 47, "HULL", C_DIM, ALIGN_LEFT);
-    gfx_text(FONT_SMALL, 30, py + 56, "BOOST", C_DIM, ALIGN_LEFT);
+    gfx_text(FONT_SMALL, 124, py + 8, "ALT m", C_DIM, ALIGN_LEFT);
+    gfx_text(FONT_LARGE, 124, py + 19, buf, C_CYAN, ALIGN_LEFT);
+    gfx_text(FONT_SMALL, 44, py + 45, "HULL", C_DIM, ALIGN_LEFT);
+    bar(92, py + 49, 104, 4, c->hull / c->hull_max, c->hull < 30 ? C_RED : RGBA(120, 220, 160, 255));
+    gfx_text(FONT_SMALL, 44, py + 57, "BOOST", C_DIM, ALIGN_LEFT);
+    bar(92, py + 61, 104, 4, c->boost_energy, C_AMBER);
     /* live oscilloscope of the composition */
     const MusicViz *z = hush_music_viz(a->music);
     float ox = 290, oy = py + 8, ow = 120, oh = 40;
@@ -194,9 +205,8 @@ static void cockpit_panel(void) {
     }
     gfx_lines(pts, 64, RGBA(120, 255, 170, 230), 0);
     gfx_rect_outline(ox, oy, ow, oh, RGBA(80, 90, 100, 255));
-    music_line(ox, oy + oh + 4, ALIGN_LEFT);
     radar(445, py + 37, 28);
-    signal_meter(290, py + 60, a->mode == MODE_PATROL ? a->mission.signal : a->bridge.landmark_prox);
+    signal_meter(290, py + 54, a->mode == MODE_PATROL ? a->mission.signal : a->bridge.landmark_prox);
 }
 
 void hud_draw(void) {

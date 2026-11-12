@@ -85,6 +85,8 @@ float world_raycast(const World *w, V3 a, V3 b);
 float world_enclosure(const World *w, V3 p, float radius);
 /* Height of the tallest geometry under (x,z), or ground. */
 float world_height_at(const World *w, float x, float z);
+/* hash of all generated geometry (quantised to 1/16 m), for cross-platform checks */
+uint32_t world_fingerprint(const World *w);
 
 /* lane evaluation: position and tangent at arc length s (wraps for loops) */
 V3 lane_eval(const Lane *l, float s, V3 *tangent);

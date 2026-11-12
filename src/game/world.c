@@ -218,7 +218,11 @@ static float civic_h(Rng *r, float x, float z) {
     return 45.0f + (60.0f + 230.0f * core) * (0.55f + 0.6f * rng_float(r));
 }
 static int civic_tex(Rng *r, float x, float z) { (void)x; (void)z; float w[3] = {6, 2.5f, 1.5f}; int k = rng_weighted(r, w, 3); return k == 0 ? TEX_GLASS : (k == 1 ? TEX_CONCRETE : TEX_METAL); }
-static float stacks_h(Rng *r, float x, float z) { (void)x; (void)z; return 70.0f + 140.0f * rng_float(r) * rng_float(r) + 30.0f * rng_float(r); }
+static float stacks_h(Rng *r, float x, float z) {
+    (void)x; (void)z;
+    float a = rng_float(r), b = rng_float(r), c = rng_float(r);   /* sequenced draws */
+    return 70.0f + 140.0f * a * b + 30.0f * c;
+}
 static int stacks_tex(Rng *r, float x, float z) { (void)x; (void)z; return rng_chance(r, 0.8f) ? TEX_RESIDENTIAL : TEX_CONCRETE; }
 static float works_h(Rng *r, float x, float z) { (void)x; (void)z; return 16.0f + 46.0f * rng_float(r); }
 static int works_tex(Rng *r, float x, float z) { (void)x; (void)z; return rng_chance(r, 0.6f) ? TEX_INDUSTRIAL : TEX_METAL; }
@@ -421,7 +425,8 @@ static void gen_works(World *w, Rng *r) {
     /* scattered vents */
     for (int i = 0; i < 6 && w->n_vents < MAX_VENTS; i++) {
         Vent *v = &w->vents[w->n_vents++];
-        v->p = v3(-450.0f + 900.0f * rng_float(r), 0, 120.0f + 300.0f * rng_float(r)); v->r = 7.0f; v->h = 55.0f;
+        float vx = -450.0f + 900.0f * rng_float(r), vz = 120.0f + 300.0f * rng_float(r);
+        v->p = v3(vx, 0, vz); v->r = 7.0f; v->h = 55.0f;
     }
 }
 
@@ -548,7 +553,11 @@ static void gen_undertow(World *w, Rng *r) {
     /* sparse lights: a few lit windows and lamps reflected in the water */
     for (int i = 0; i < 40; i++) {
         float x = -560.0f + 1120.0f * rng_float(r), z = -560.0f + 1120.0f * rng_float(r);
-        add_light(w, v3(x, 1.0f + 3.0f * rng_float(r), z), 1.5f, rng_chance(r, 0.7f) ? col_amber : col_cyan, LT_WATER, rng_chance(r, 0.2f) ? 2 : 0, rng_float(r));
+        float ly = 1.0f + 3.0f * rng_float(r);
+        uint32_t lc = rng_chance(r, 0.7f) ? col_amber : col_cyan;
+        int bl = rng_chance(r, 0.2f) ? 2 : 0;
+        float ph = rng_float(r);
+        add_light(w, v3(x, ly, z), 1.5f, lc, LT_WATER, bl, ph);
     }
 }
 
@@ -739,5 +748,18 @@ float world_height_at(const World *w, float x, float z) {
         const Aabb *b = &w->boxes[w->refs[k]].b;
         if (x >= b->x0 && x <= b->x1 && z >= b->z0 && z <= b->z1 && b->y1 > h) h = b->y1;
     }
+    return h;
+}
+
+uint32_t world_fingerprint(const World *w) {
+    uint32_t h = H_FNV_INIT;
+    for (int i = 0; i < w->n_boxes; i++) {
+        const float *f = &w->boxes[i].b.x0;
+        for (int k = 0; k < 6; k++) h = h_fnv1a(h, (uint32_t)(int32_t)floorf(f[k] * 16.0f + 0.5f));
+        h = h_fnv1a(h, w->boxes[i].tex | ((uint32_t)w->boxes[i].kind << 8));
+    }
+    for (int i = 0; i < w->n_lights; i++) { h = h_fnv1a(h, (uint32_t)(int32_t)floorf(w->lights[i].p.x * 16.0f + 0.5f)); h = h_fnv1a(h, (uint32_t)(int32_t)floorf(w->lights[i].p.z * 16.0f + 0.5f)); }
+    for (int i = 0; i < w->n_vents; i++) h = h_fnv1a(h, (uint32_t)(int32_t)floorf(w->vents[i].p.x * 16.0f + 0.5f));
+    for (int i = 0; i < w->n_pois; i++) h = h_fnv1a(h, (uint32_t)(int32_t)floorf(w->pois[i].p.y * 16.0f + 0.5f));
     return h;
 }

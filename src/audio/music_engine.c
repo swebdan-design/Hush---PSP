@@ -92,9 +92,12 @@ static void read_mailbox(HushMusic *m) {
 
 /* ---------------- event API used by the composer ---------------- */
 
+void (*hush_event_trace)(uint32_t step, int layer, int note, int vel);
+
 void eng_log(HushMusic *m, int layer, int note, float vel) {
     Composer *c = &m->c;
     int v = (int)(h_clampf(vel, 0.0f, 1.0f) * 127.0f + 0.5f);
+    if (hush_event_trace) hush_event_trace(c->step, layer, note, v);
     c->event_hash = h_fnv1a(c->event_hash, (c->step << 4) | (uint32_t)layer);
     c->event_hash = h_fnv1a(c->event_hash, ((uint32_t)(note & 0xFF)) | ((uint32_t)v << 8));
     c->event_count++;

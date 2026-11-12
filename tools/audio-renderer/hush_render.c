@@ -40,6 +40,7 @@ static void usage(void) {
         "  --tempo BPM --key 0-11 --mode NAME|auto --density X --darkness X --motion X\n"
         "  --complexity X --melody X --rhythm X   (override preset parameters)\n"
         "  --vol LAYER=X       layer volume override (drone|harmony|bass|perc|frag|texture), repeatable\n"
+        "  --trace             print every scheduled event (step layer note velocity)\n"
         "  --events            print the first 200 musical events\n"
         "  --quiet             only print the summary line\n"
         "  --help\n");
@@ -79,6 +80,8 @@ static void wav_header(FILE *f, int rate, uint32_t frames) {
     fwrite(&br, 4, 1, f); fwrite(&ba, 2, 1, f); fwrite(&bits, 2, 1, f);
     fwrite("data", 1, 4, f); fwrite(&data, 4, 1, f);
 }
+
+static void trace_ev(uint32_t step, int layer, int note, int vel) { printf("EV %u %d %d %d\n", step, layer, note, vel); }
 
 int main(int argc, char **argv) {
     int preset = PRESET_PATROL, rate = 44100, quiet = 0, flight = 0, console = 0, show_events = 0;
@@ -138,6 +141,7 @@ int main(int argc, char **argv) {
             if (!found) { fprintf(stderr, "bad --vol '%s'\n", v); return 2; }
         }
         else if (!strcmp(a, "--events")) show_events = 1;
+        else if (!strcmp(a, "--trace")) hush_event_trace = trace_ev;
         else if (!strcmp(a, "--quiet")) quiet = 1;
         else { fprintf(stderr, "unknown option '%s' (try --help)\n", a); return 2; }
     }

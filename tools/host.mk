@@ -2,7 +2,7 @@
 # Included from the top-level Makefile.
 
 HOST_CC ?= cc
-HOST_CFLAGS ?= -O2 -std=gnu11 -Wall -Wextra -Wno-unused-parameter -fno-fast-math
+HOST_CFLAGS ?= -O2 -std=gnu11 -Wall -Wextra -Wno-unused-parameter -fno-fast-math -ffp-contract=off -fsingle-precision-constant
 HOST_BUILD := build/host
 
 AUDIO_SRC := src/audio/dsp.c src/audio/synth.c src/audio/fx.c src/audio/theory.c \

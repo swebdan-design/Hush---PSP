@@ -85,7 +85,6 @@ void gfx_init(void) {
     sceGuEnable(GU_BLEND);
     sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
     sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
-    sceGuSetDither(NULL);
     sceGuFinish();
     sceGuSync(0, 0);
     sceDisplayWaitVblankStart();

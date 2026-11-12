@@ -397,7 +397,7 @@ static void drift_render(void) {
     menu_item(120, 128, "MUSIC PRESET", hush_preset_names[p->drift_preset], a->menu_sel == 3, 1);
     menu_item(120, 146, "COMPOSITION SEED", seed, a->menu_sel == 4, 1);
     menu_item(120, 174, "BEGIN DRIFT", NULL, a->menu_sel == 5, 1);
-    gfx_text_wrap(FONT_SMALL, 110, 222, 270, "All four districts are open in Drift. Hold TRIANGLE near a sonic landmark to log it in the journal.", C_DIM, 2, -1);
+    gfx_text_wrap(FONT_SMALL, 110, 222, 270, "All four districts are open in Drift. Hold TRIANGLE near a sonic landmark to log it in the journal.", C_DIM, 3, -1);
     ui_footer(a->menu_sel == 4 ? "S:RANDOM X:SELECT O:BACK" : "X:SELECT O:BACK");
 }
 

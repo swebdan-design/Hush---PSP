@@ -130,5 +130,7 @@ typedef struct {
     uint32_t section_hist[SEC_COUNT];
 } MusicStats;
 void hush_music_stats(HushMusic *m, MusicStats *out);
+/* optional diagnostic hook called for every scheduled musical event */
+extern void (*hush_event_trace)(uint32_t step, int layer, int note, int vel);
 
 #endif

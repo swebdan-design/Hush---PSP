@@ -4,6 +4,7 @@
  * All displays are fed by the audio thread's real output and state. */
 #include "app.h"
 #include "../audio/dsp.h"
+#include "../audio/synth.h"
 #include <stdio.h>
 #include <string.h>
 

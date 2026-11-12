@@ -17,7 +17,11 @@ static float qz(float x) { return (float)(int)(h_clampf(x, 0.0f, 1.0f) * 256.0f 
 static float step_seconds(const Composer *c) { return 60.0f / (c->bpm * 4.0f); }
 
 static float smooth_k(const Composer *c, float tau_s) {
-    return 1.0f - expf(-step_seconds(c) / h_maxf(tau_s, 0.01f));
+    /* 1 - e^-x by a short series using only + - * /, so the result is bit-identical
+     * on every IEEE-754 platform (libm expf differs between newlib and glibc). x < ~0.2 here. */
+    float x = step_seconds(c) / h_maxf(tau_s, 0.01f);
+    if (x > 0.5f) x = 0.5f;
+    return x * (1.0f - x * (0.5f - x * (0.16666667f - x * 0.041666668f)));
 }
 
 static int tonic_pc(const Composer *c) { return ((c->P.key + c->key_offset) % 12 + 12) % 12; }
@@ -155,7 +159,7 @@ static void gen_perc(Composer *c) {
     switch (c->perc_style) {
     case PS_INDUSTRIAL:
         euclid(K, rng_range(r, 3, 5), 16, 0, 0.9f);
-        euclid(M, rng_range(r, 2, 4), 16, rng_int(r, 16), 0.7f);
+        { int k = rng_range(r, 2, 4); int rot = rng_int(r, 16); euclid(M, k, 16, rot, 0.7f); }
         S[12] = 0.65f; S[7] = 0.25f;
         for (int i = 0; i < 16; i++) H[i] = rng_chance(r, 0.6f) ? 0.35f + 0.3f * rng_float(r) : 0.0f;
         euclid(C, 7, 16, rng_int(r, 4), 0.5f);
@@ -478,7 +482,9 @@ static void bar_tick(HushMusic *m) {
         Patch p;
         patch_drone(&p, c, 2);
         int n = 72 + ((c->chord.pcs[rng_int(&c->r_atmos, c->chord.n)] - 72) % 12 + 12) % 12;
-        eng_note(m, LAYER_ATMOS, eng_alloc(m, V_ATMOS0, V_ATMOS_N), &p, n, 0.07f, rng_bipolar(&c->r_atmos) * 0.8f, 16.0f * (float)rng_range(&c->r_atmos, 4, 10), 0);
+        float pan = rng_bipolar(&c->r_atmos) * 0.8f;
+        float gate = 16.0f * (float)rng_range(&c->r_atmos, 4, 10);
+        eng_note(m, LAYER_ATMOS, eng_alloc(m, V_ATMOS0, V_ATMOS_N), &p, n, 0.07f, pan, gate, 0);
     }
     /* Black Reservoir: sub-octave drone beneath everything */
     if (c->s_landmark[LM_RESERVOIR] > 0.35f && c->bar % 8 == 0) {
@@ -599,7 +605,10 @@ static void step_pulse(HushMusic *m) {
                 Patch p; patch_arp(&p, c);
                 int note = c->voicing[idx] + 12;
                 if (note > 88) note -= 12;
-                eng_note(m, LAYER_PULSE, eng_alloc(m, V_ARP0, V_ARP_N), &p, note, 0.16f + 0.06f * rng_float(&c->r_pulse), rng_bipolar(&c->r_pulse) * 0.6f, 1.0f, 0);
+                /* draws are taken into locals: argument evaluation order is unspecified in C */
+                float vel = 0.16f + 0.06f * rng_float(&c->r_pulse);
+                float pan = rng_bipolar(&c->r_pulse) * 0.6f;
+                eng_note(m, LAYER_PULSE, eng_alloc(m, V_ARP0, V_ARP_N), &p, note, vel, pan, 1.0f, 0);
             }
         }
     }
