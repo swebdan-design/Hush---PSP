@@ -42,6 +42,7 @@ typedef struct {
     uint8_t drift_district, drift_weather, drift_tod, drift_preset;
     uint32_t play_seconds;
     uint8_t control_scheme;      /* CTL_FACE (default) or CTL_CLASSIC; appended in v1 saves, optional on load */
+    uint8_t story_flags;         /* bit0: prologue seen. Appended, optional on load */
 } Progress;
 
 void progress_defaults(Progress *p);

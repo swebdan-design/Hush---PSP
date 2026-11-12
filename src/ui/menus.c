@@ -38,12 +38,19 @@ float ui_glyph(float x, float y, char b, float alpha) {
     case 'u': gfx_tri(cx, cy - 4, cx + 4, cy + 2, cx - 4, cy + 2, col_alpha(C_TXT, alpha)); break;
     case 'd': gfx_tri(cx - 4, cy - 2, cx + 4, cy - 2, cx, cy + 4, col_alpha(C_TXT, alpha)); break;
     case 'L': case 'R': { char t[2] = { b, 0 }; return gfx_text(FONT_SMALL, x, y, t, col_alpha(C_TXT, alpha), ALIGN_LEFT) + 2; }
+    case 's': return gfx_text(FONT_SMALL, x, y, "START", col_alpha(C_TXT, alpha), ALIGN_LEFT) + 2;
+    case 'e': return gfx_text(FONT_SMALL, x, y, "SELECT", col_alpha(C_TXT, alpha), ALIGN_LEFT) + 2;
     default: break;
     }
     return 12;
 }
 
-static float glyph_width(char b) { if (b == 'L' || b == 'R') { char t[2] = { b, 0 }; return gfx_text_width(FONT_SMALL, t) + 2; } return 12; }
+static float glyph_width(char b) {
+    if (b == 'L' || b == 'R') { char t[2] = { b, 0 }; return gfx_text_width(FONT_SMALL, t) + 2; }
+    if (b == 's') return gfx_text_width(FONT_SMALL, "START") + 2;
+    if (b == 'e') return gfx_text_width(FONT_SMALL, "SELECT") + 2;
+    return 12;
+}
 
 /* hints like "X:SELECT O:BACK", laid out right-aligned with exact widths */
 void ui_footer(const char *hints) {
@@ -141,7 +148,9 @@ static void main_update(void) {
     if (back()) app_set_state(ST_TITLE);
     if (!ok()) return;
     switch (a->menu_sel) {
-    case 0: a->menu_sel = progress_next_mission(&a->prog); app_set_state(ST_MISSIONS); break;
+    case 0:
+        if (!(a->prog.story_flags & 1)) { start_prologue(ST_MISSIONS); break; }
+        a->menu_sel = progress_next_mission(&a->prog); app_set_state(ST_MISSIONS); break;
     case 1: a->menu_sel = 0; app_set_state(ST_DRIFT_SETUP); break;
     case 2: a->console_return = ST_MENU; a->console_overlay = 0; a->console_sel = 0; app_set_state(ST_CONSOLE); break;
     case 3: a->menu_sel = 0; app_set_state(ST_LOAD); break;
@@ -187,6 +196,7 @@ static void missions_update(void) {
     App *a = &g_app;
     list_nav(&a->menu_sel, MISSION_COUNT);
     if (back()) { a->menu_sel = 0; app_set_state(ST_MENU); return; }
+    if (a->in.pressed & PSP_CTRL_TRIANGLE) { sfx_play(&a->sfx, SFX_UI_SELECT); a->menu_top = a->menu_sel; a->menu_sel = 0; app_set_state(ST_CASEFILE); return; }
     if (ok()) {
         if (!progress_mission_unlocked(&a->prog, a->menu_sel)) { app_note("COMPLETE THE PREVIOUS ASSIGNMENT FIRST"); sfx_play(&a->sfx, SFX_FAIL); return; }
         a->mission_id = a->menu_sel;
@@ -219,7 +229,7 @@ static void missions_render(void) {
         gfx_text_wrap(FONT_SMALL, 334, 74, 130, md->briefing[0], C_TXT, 8, -1);
     } else gfx_text_wrap(FONT_SMALL, 334, 46, 130, "Assignment sealed. Complete the previous patrol.", C_DIM, 4, -1);
     if (a->note_t > 0) gfx_text(FONT_SMALL, 334, 226, a->note, C_SEL, ALIGN_LEFT);
-    ui_footer("X:BRIEFING O:BACK");
+    ui_footer("T:CASE-FILE X:BRIEFING O:BACK");
 }
 
 static void briefing_update(void) {
@@ -259,7 +269,9 @@ static void briefing_render(void) {
 static void debrief_update(void) {
     App *a = &g_app;
     if (a->state_t < 0.8f) return;
-    if (ok()) {
+    if (ok() && a->debrief_page == 0) { a->debrief_page = 1; a->state_t = 0.0f; return; }
+    if (a->debrief_page == 1 && a->state_t > 0.5f && (a->in.pressed & PSP_CTRL_CROSS)) {
+        a->debrief_page = 0;
         a->mode = MODE_NONE;
         if (hush_missions[a->mission_id].rewards & RW_ENDING) { app_start_attract(); app_set_state(ST_CREDITS); return; }
         a->menu_sel = progress_next_mission(&a->prog);
@@ -271,6 +283,17 @@ static void debrief_update(void) {
 static void debrief_render(void) {
     App *a = &g_app;
     const MissionDef *md = &hush_missions[a->mission_id];
+    if (a->debrief_page == 1) {
+        gfx_rect(0, 0, SCR_W, SCR_H, RGBA(0, 0, 0, 200));
+        char sub[32];
+        snprintf(sub, sizeof(sub), "ENTRY %02d", a->mission_id + 1);
+        ui_header("OPERATOR'S LOG", sub);
+        ui_panel(48, 76, 384, 110, 1.0f);
+        gfx_text(FONT_SMALL, 62, 86, "MOTH-7 / NIGHT ROTA", C_SEL, ALIGN_LEFT);
+        gfx_text_wrap(FONT_SMALL, 62, 106, 356, story_log[a->mission_id], C_TXT, 6, (int)(a->state_t * 40.0f));
+        ui_footer("X:CONTINUE");
+        return;
+    }
     gfx_rect(0, 0, SCR_W, SCR_H, RGBA(0, 0, 0, (int)h_minf(200.0f, a->state_t * 300.0f)));
     ui_header("ASSIGNMENT COMPLETE", md->title);
     ui_panel(24, 44, 432, 190, h_clampf(a->state_t * 2.0f, 0, 1));
@@ -574,6 +597,116 @@ static void credits_render(void) {
     ui_footer("O:BACK");
 }
 
+/* ---------------- PROLOGUE / CASE FILE ---------------- */
+
+void start_prologue(AppState ret) {
+    App *a = &g_app;
+    app_load_district(DISTRICT_CIVIC);
+    app_start_attract();
+    a->prologue_card = 0;
+    a->prologue_return = ret;
+    app_set_state(ST_PROLOGUE);
+}
+
+static void prologue_end(void) {
+    App *a = &g_app;
+    if (!(a->prog.story_flags & 1)) { a->prog.story_flags |= 1; app_save(); }
+    a->menu_sel = a->prologue_return == ST_CASEFILE ? 0 : progress_next_mission(&a->prog);
+    app_set_state(a->prologue_return);
+}
+
+static void prologue_update(void) {
+    App *a = &g_app;
+    if (a->in.pressed & PSP_CTRL_START) { sfx_play(&a->sfx, SFX_UI_BACK); prologue_end(); return; }
+    /* cards advance by themselves (reading time) or with CROSS */
+    float dur = 3.0f + (float)strlen(story_prologue[a->prologue_card].text) / 24.0f;
+    if ((ok() && a->state_t > 0.6f) || a->state_t > dur) {
+        a->prologue_card++;
+        a->state_t = 0;
+        if (a->prologue_card >= PROLOGUE_CARDS) prologue_end();
+    }
+}
+
+static void prologue_render(void) {
+    App *a = &g_app;
+    gfx_rect(0, 0, SCR_W, 40, RGBA(0, 0, 0, 255));
+    gfx_rect(0, SCR_H - 40, SCR_W, 40, RGBA(0, 0, 0, 255));
+    gfx_rect(0, 40, SCR_W, SCR_H - 80, RGBA(0, 0, 0, 90));
+    if (a->prologue_card >= PROLOGUE_CARDS) return;
+    const StoryCard *c = &story_prologue[a->prologue_card];
+    float dur = 3.0f + (float)strlen(c->text) / 24.0f;
+    float al = h_clampf(a->state_t * 1.5f, 0, 1) * h_clampf((dur - a->state_t) * 2.0f, 0, 1);
+    if (c->heading[0]) gfx_text(FONT_LARGE, SCR_W * 0.5f, 96, c->heading, col_alpha(C_SEL, al), ALIGN_CENTER);
+    /* centre each wrapped line */
+    char buf[200];
+    snprintf(buf, sizeof(buf), "%s", c->text);
+    const char *p = buf;
+    float y = c->heading[0] ? 128 : 116;
+    while (*p) {
+        char line[96]; int n = 0, last = -1;
+        while (p[n] && n < 95) {
+            line[n] = p[n]; line[n + 1] = 0;
+            if (gfx_text_width(FONT_SMALL, line) > 380) break;
+            if (p[n] == ' ') last = n;
+            n++;
+        }
+        int take = (p[n] && last > 0) ? last : n;
+        memcpy(line, p, (size_t)take); line[take] = 0;
+        gfx_text(FONT_SMALL, SCR_W * 0.5f, y, line, col_alpha(C_TXT, al), ALIGN_CENTER);
+        y += 15;
+        p += take;
+        while (*p == ' ') p++;
+    }
+    char pg[16];
+    snprintf(pg, sizeof(pg), "%d / %d", a->prologue_card + 1, PROLOGUE_CARDS);
+    gfx_text(FONT_SMALL, 18, SCR_H - 28, pg, C_DIM, ALIGN_LEFT);
+    ui_footer("X:NEXT s:SKIP");
+}
+
+static int casefile_entries(int *ids) {
+    int n = 0;
+    ids[n++] = -1;   /* prologue */
+    for (int i = 0; i < MISSION_COUNT; i++) if (g_app.prog.missions_done & (1u << i)) ids[n++] = i;
+    return n;
+}
+
+static void casefile_update(void) {
+    App *a = &g_app;
+    int ids[16], n = casefile_entries(ids);
+    list_nav(&a->menu_sel, n);
+    if (back() || (a->in.pressed & PSP_CTRL_TRIANGLE)) { a->menu_sel = a->menu_top; app_set_state(ST_MISSIONS); return; }
+    if (ok() && ids[a->menu_sel] < 0) start_prologue(ST_CASEFILE);
+}
+
+static void casefile_render(void) {
+    App *a = &g_app;
+    int ids[16], n = casefile_entries(ids);
+    gfx_rect(0, 0, SCR_W, SCR_H, RGBA(0, 0, 0, 175));
+    ui_header("CASE FILE", "61.7 MHz - UNRESOLVED");
+    for (int k = 0; k < n; k++) {
+        float y = 42 + 16.0f * (float)k;
+        int sel = a->menu_sel == k;
+        if (sel) { gfx_rect(14, y - 2, 176, 15, RGBA(255, 186, 90, 30)); gfx_rect(14, y - 2, 3, 15, C_SEL); }
+        char buf[40];
+        if (ids[k] < 0) snprintf(buf, sizeof(buf), "PROLOGUE");
+        else snprintf(buf, sizeof(buf), "%02d  %s", ids[k] + 1, hush_missions[ids[k]].title);
+        gfx_text(FONT_SMALL, 24, y, buf, sel ? C_SEL : C_TXT, ALIGN_LEFT);
+    }
+    ui_panel(202, 42, 264, 190, 1.0f);
+    int id = ids[h_clampi(a->menu_sel, 0, n - 1)];
+    if (id < 0) {
+        gfx_text(FONT_SMALL, 214, 52, "PROLOGUE", C_SEL, ALIGN_LEFT);
+        gfx_text_wrap(FONT_SMALL, 214, 72, 240, "Vesper, the Authority, and eleven nights of a signal nobody owns. Press CROSS to replay.", C_TXT, 6, -1);
+    } else {
+        gfx_text(FONT_SMALL, 214, 52, "OPERATOR'S LOG", C_SEL, ALIGN_LEFT);
+        gfx_text(FONT_SMALL, 214, 66, hush_missions[id].title, C_ACC, ALIGN_LEFT);
+        int l = gfx_text_wrap(FONT_SMALL, 214, 86, 240, story_log[id], C_TXT, 6, -1);
+        gfx_text_wrap(FONT_SMALL, 214, 98 + 14.0f * (float)l, 240, hush_missions[id].debrief[0], C_DIM, 4, -1);
+    }
+    if (n == 1) gfx_text_wrap(FONT_SMALL, 24, 70, 166, "Complete assignments to add entries.", C_DIM, 3, -1);
+    ui_footer(ids[h_clampi(a->menu_sel, 0, n - 1)] < 0 ? "X:REPLAY O:BACK" : "O:BACK");
+}
+
 /* ---------------- dispatch ---------------- */
 
 void menus_update(float dt) {
@@ -591,6 +724,8 @@ void menus_update(float dt) {
     case ST_LOAD: load_update(); break;
     case ST_CONTROLS: if (back() || ok()) { g_app.menu_sel = 9; app_set_state(ST_OPTIONS); } break;
     case ST_CREDITS: credits_update(); break;
+    case ST_PROLOGUE: prologue_update(); break;
+    case ST_CASEFILE: casefile_update(); break;
     default: break;
     }
 }
@@ -609,6 +744,8 @@ void menus_render(void) {
     case ST_LOAD: load_render(); break;
     case ST_CONTROLS: controls_render(); break;
     case ST_CREDITS: credits_render(); break;
+    case ST_PROLOGUE: prologue_render(); break;
+    case ST_CASEFILE: casefile_render(); break;
     default: break;
     }
 }

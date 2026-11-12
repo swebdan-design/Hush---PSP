@@ -294,6 +294,16 @@ void hud_draw(void) {
         snprintf(buf, sizeof(buf), "%2.0f fps cpu %4.1fms gpu %4.1fms tri %d", a->fps, gfx_last_cpu_ms, gfx_last_gpu_wait_ms, rs->tris_drawn);
         gfx_text(FONT_SMALL, 8, SCR_H - 92, buf, RGBA(255, 255, 255, 200), ALIGN_LEFT);
     }
+    if (a->chatter_t > 0 && a->chatter && a->tx_n == 0) {
+        float al = h_clampf(a->chatter_t, 0, 1) * h_clampf((6.0f - a->chatter_t) * 3.0f, 0, 1);
+        char q[160];
+        snprintf(q, sizeof(q), "\"%s\"", a->chatter);
+        float tw = gfx_text_width(FONT_SMALL, q), w = h_minf(tw, 300.0f);
+        int lines = tw > 300.0f ? 2 : 1;
+        gfx_rect(SCR_W * 0.5f - w * 0.5f - 8, SCR_H - 62, w + 16, 20.0f + 14.0f * (float)lines, col_alpha(RGBA(4, 6, 10, 170), al));
+        gfx_text(FONT_SMALL, SCR_W * 0.5f, SCR_H - 60, "OVERHEARD", col_alpha(RGBA(150, 140, 180, 255), al), ALIGN_CENTER);
+        gfx_text_wrap(FONT_SMALL, SCR_W * 0.5f - w * 0.5f, SCR_H - 48, w + 2, q, col_alpha(RGBA(215, 210, 230, 255), al), 2, -1);
+    }
     if (a->state_t < 9.0f && a->mode != MODE_ATTRACT) ctl_hint_panel(SCR_W * 0.5f, SCR_H - 98, h_clampf(9.0f - a->state_t, 0.0f, 1.0f));
     hud_draw_transmissions();
 }

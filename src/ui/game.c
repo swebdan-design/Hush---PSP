@@ -141,6 +141,16 @@ void game_update(float dt, int controls) {
         } else { a->scan_lm = lm; a->scan_t = 0; }
     } else { a->scan_t = 0; a->scan_lm = -1; }
     if (a->discovery_t > 0) a->discovery_t -= dt;
+    /* overheard on the street: hover low and slow near pedestrians */
+    if (a->chatter_t > 0) a->chatter_t -= dt;
+    if (a->chatter_cool > 0) a->chatter_cool -= dt;
+    if (a->mode != MODE_ATTRACT && a->chatter_cool <= 0 && a->craft.speed < 9.0f &&
+        a->craft.pos.y - a->world.ground_y < 16.0f && crowd_nearest(&a->crowd, a->craft.pos, 16.0f) >= 0) {
+        a->chatter = story_chatter(story_act(a->prog.missions_done), a->chatter_n * 2654435761u + (uint32_t)a->world.id * 7u);
+        a->chatter_n++;
+        a->chatter_t = 6.0f;
+        a->chatter_cool = 9.0f;
+    }
     if (a->emp_flash > 0) a->emp_flash -= dt * 2.0f;
 
     float pursuit = a->mode == MODE_PATROL ? a->mission.pursuit : 0.0f;

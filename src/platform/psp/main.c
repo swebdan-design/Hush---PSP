@@ -224,7 +224,8 @@ static void autotest_tick(float dt) {
         else if (a->state == ST_FAILED) { printf("AUTOTEST: mission 6 FAILED: %s\n", a->mission.fail_reason); NEXT(); }
         else if (g_step_t > 240.0f) { printf("AUTOTEST: mission 6 TIMEOUT step %d\n", a->mission.step); NEXT(); }
         break;
-    case 14: if (g_step_t > 2.0f) { shot("debrief"); NEXT(); } break;
+    case 14: if (g_step_t > 2.0f) { shot("debrief"); a->debrief_page = 1; a->state_t = 0; g_step = 55; g_step_t = 0; } break;
+    case 55: if (g_step_t > 4.0f) { shot("operator_log"); a->debrief_page = 0; g_step = 15; g_step_t = 0; } break;
     case 15: {
         Progress before = a->prog; char msg[64];
         int okk = save_io_load(&a->prog, msg, sizeof(msg));
@@ -235,7 +236,12 @@ static void autotest_tick(float dt) {
     case 17: in->s_ly = 0.8f; if (g_step_t > 5.0f) { shot("drift_undertow"); perf("drift_undertow"); a->prog.drift_district = DISTRICT_CIVIC; a->prog.drift_weather = WX_LIGHT_RAIN; a->prog.drift_tod = TOD_TWILIGHT; app_start_drift(); NEXT(); } break;
     case 18: in->s_ly = 0.9f; in->s_held = PSP_CTRL_TRIANGLE; if (g_step_t > 6.0f) { shot("drift_civic_twilight"); perf("drift_civic"); a->console_return = ST_MENU; a->console_overlay = 0; app_set_state(ST_CONSOLE); NEXT(); } break;
     case 19: if (g_step_t > 3.0f) { shot("console_standalone"); a->mission_id = 0; app_set_state(ST_BRIEFING); NEXT(); } break;
-    case 20: if (g_step_t > 4.0f) { shot("briefing"); printf("AUTOTEST: done, %d frames, audio blocks %u late %u\n", gfx_frame_count, audio_out_blocks(), audio_out_underruns()); a->quit = 1; } break;
+    case 20: if (g_step_t > 4.0f) { shot("briefing"); start_prologue(ST_CASEFILE); g_step = 60; g_step_t = 0; } break;
+    case 60: if (g_step_t > 2.5f) { shot("prologue"); a->prologue_card = 3; a->state_t = 0; NEXT(); } break;
+    case 61: if (g_step_t > 2.5f) { shot("prologue_card4"); a->prologue_card = PROLOGUE_CARDS - 1; a->state_t = 99; NEXT(); } break;
+    case 62: if (a->state == ST_CASEFILE && g_step_t > 1.0f) { a->menu_sel = 1; NEXT(); } break;
+    case 63: if (g_step_t > 1.0f) { shot("casefile"); printf("AUTOTEST: story_flags=%d\n", a->prog.story_flags);
+        printf("AUTOTEST: done, %d frames, audio blocks %u late %u\n", gfx_frame_count, audio_out_blocks(), audio_out_underruns()); a->quit = 1; } break;
     }
 }
 #endif

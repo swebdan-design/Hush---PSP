@@ -123,6 +123,7 @@ int progress_serialize(const Progress *p, uint8_t *buf, int cap) {
     w8(&w, p->drift_district); w8(&w, p->drift_weather); w8(&w, p->drift_tod); w8(&w, p->drift_preset);
     w32(&w, p->play_seconds);
     w8(&w, p->control_scheme);
+    w8(&w, p->story_flags);
     if (w.err) return 0;
     W h = { buf, 0, 16, 0 };
     w32(&h, SAVE_MAGIC); w16(&h, SAVE_VERSION); w16(&h, 0); w32(&h, (uint32_t)w.n); w32(&h, hush_crc32(buf + 16, w.n));
@@ -163,6 +164,7 @@ int progress_deserialize(Progress *p, const uint8_t *buf, int len, const char **
     q.play_seconds = r32(&r);
     /* fields appended after the first release: absent in older saves, so keep defaults */
     if (r.n < r.len) q.control_scheme = (uint8_t)h_mini((int)r8(&r), CTL_COUNT - 1);
+    if (r.n < r.len) q.story_flags = (uint8_t)r8(&r);
     /* essential features always remain available */
     q.waves |= (1u << W_SINE) | (1u << W_TRI) | (1u << W_SAW) | (1u << W_SQUARE) | (1u << W_PULSE) | (1u << W_ORGAN);
     q.presets |= (1u << PRESET_PATROL) | (1u << PRESET_PURSUIT) | (1u << PRESET_DRIFT);

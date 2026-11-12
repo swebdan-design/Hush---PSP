@@ -11,6 +11,7 @@
 #include "../game/env_bridge.h"
 #include "../game/autopilot.h"
 #include "../game/crowd.h"
+#include "../game/story.h"
 #include "../audio/music.h"
 #include "../audio/sfx.h"
 #include "../platform/psp/input.h"
@@ -19,7 +20,7 @@
 
 typedef enum {
     ST_TITLE = 0, ST_MENU, ST_MISSIONS, ST_BRIEFING, ST_PLAY, ST_PAUSE, ST_DEBRIEF, ST_FAILED,
-    ST_CONSOLE, ST_OPTIONS, ST_CREDITS, ST_LOAD, ST_DRIFT_SETUP, ST_CONTROLS, ST_COUNT
+    ST_CONSOLE, ST_OPTIONS, ST_CREDITS, ST_LOAD, ST_DRIFT_SETUP, ST_CONTROLS, ST_PROLOGUE, ST_CASEFILE, ST_COUNT
 } AppState;
 
 enum { MODE_NONE = 0, MODE_PATROL, MODE_DRIFT, MODE_ATTRACT };
@@ -61,6 +62,11 @@ typedef struct {
     int discovery_lm;
 
     int menu_sel, menu_top;
+    int debrief_page, prologue_card;
+    AppState prologue_return;
+    const char *chatter;
+    float chatter_t, chatter_cool;
+    uint32_t chatter_n;
     int console_page, console_sel, console_overlay;
     int hud_override;        /* -1 = use options */
     float fps, fps_acc;
@@ -99,6 +105,7 @@ void menus_render(void);
 void ui_panel(float x, float y, float w, float h, float alpha);
 void ui_header(const char *title, const char *sub);
 void ui_footer(const char *hints);
+void start_prologue(AppState return_to);
 
 /* controls.c */
 enum { CTL_ACT_UP = 0, CTL_ACT_DOWN, CTL_ACT_BOOST, CTL_ACT_BRAKE, CTL_ACT_SCAN, CTL_ACT_EMP };
