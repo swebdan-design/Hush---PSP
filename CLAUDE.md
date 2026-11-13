@@ -39,6 +39,11 @@ Modes: **PATROL** (12 missions), **DRIFT** (free flight), **SIGNAL CONSOLE** (th
   The main loop calls `gfx_submit` and the GE finishes drawing while the next update runs; `gfx_begin` (and anything
   that touches GE-read memory, e.g. district loads via `loading_screen`) presents/waits first.
 - Audio DSP hot loops (`synth.c`, `fx.c`, `dsp.c`) build with -O3; no libm calls per sample (`dsp_floor`, cached saturation).
+- **Data cache vs GE** (real hardware only; PPSSPP has no cache): the GE reads RAM, so vertices the CPU writes each
+  frame must reach RAM before the draw. Batches use `gfx_draw()` (writeback of exactly that range, then draw); small
+  per-call blocks (2D, text, cars, scan beam) are written through `gfx_mem_uc()` (uncached alias) and drawn directly.
+  Never call raw `sceGuDrawArray` on freshly written cached memory: on a PSP-3000 it caused missing triangles in a
+  checkerboard, blue patches (the sky behind) and glow sprites floating in the wrong place.
 - Colours on the GE are ABGR (`RGBA()` macro in gfx.h does the packing). `sceGuDepthMask(GU_TRUE)` *disables* depth writes.
 
 ## Layout

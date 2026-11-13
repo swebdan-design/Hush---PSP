@@ -301,7 +301,7 @@ static void draw_scan_beam(App *a) {
     sceGuDisable(GU_FOG);
     gfx_blend_add();
     const int N = 9;
-    VtxCP *v = (VtxCP *)sceGuGetMemory(N * 2 * (int)sizeof(VtxCP));
+    VtxCP *v = (VtxCP *)gfx_mem_uc(N * 2 * (int)sizeof(VtxCP));
     float sweep = sinf(a->time * 3.0f) * 0.35f;
     for (int i = 0; i < N; i++) {
         float ang = ((float)i / (float)(N - 1) - 0.5f) * 0.6f + sweep * 0.3f;

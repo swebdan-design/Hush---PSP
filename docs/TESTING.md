@@ -154,6 +154,15 @@ Reported by the player: (1) frame rate became jittery/choppy at times, (2) windo
   emitted vertex lies further out. Cost in PPSSPP: +0.7–0.9 ms CPU per frame. Sweep re-run: street solid in all 48 views.
   **Awaiting hardware confirmation.**
 
+## 5f. Fourth hardware report (photos): checkerboard of missing street triangles, blue patches, stray "orbs", audio latency
+- Cause: CPU data cache vs GE. Per-frame vertices (clipped ground and near buildings, glow sprites, crowd, neon, text)
+  are written into display-list memory through the CPU's write-back cache; the GE reads RAM and could draw stale data
+  from the previous frame. PPSSPP does not model the cache, so no emulator run or screenshot could show it. The previous
+  build made it worse by routing more geometry through those buffers (the photos show alternate triangles missing).
+- Fix: `gfx_draw()` writes back exactly the vertex range before every batch draw; small blocks use the uncached alias.
+- Audio block back to 1024 samples (2048 added audible latency). Emulator validation unchanged: 188 host checks,
+  12/12 missions, 0 late audio blocks, determinism hash `713db168`. **Awaiting hardware confirmation.**
+
 ## 6. Known issues and limitations
 - Not tested on PSP hardware; the GE's handling of large near-plane triangles is mitigated by facade tessellation but unverified on device.
 - PPSSPP software renderer only; hardware-accelerated backends were not exercised.

@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <pspgu.h>
+#include <psputils.h>
 #include "../../core/hmath.h"
 
 #define SCR_W 480
@@ -37,6 +38,18 @@ typedef struct { float u, v; uint32_t color; float x, y, z; } VtxTCP;   /* GU_TE
 typedef struct { uint32_t color; float x, y, z; } VtxCP;                /* GU_COLOR_8888|GU_VERTEX_32BITF */
 #define VT_TCP (GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF)
 #define VT_CP (GU_COLOR_8888 | GU_VERTEX_32BITF)
+
+/* Draws vertices the CPU has just written (display-list memory from sceGuGetMemory or any per-frame buffer).
+ * The GE reads RAM, not the CPU's data cache: without this writeback it can draw stale vertices from the previous
+ * frame - missing triangles, sprites in the wrong place. PPSSPP has no cache, so only real hardware shows it. */
+/* small per-call vertex blocks: write through the uncached alias (straight to RAM) and draw with sceGuDrawArray */
+static inline void *gfx_mem_uc(int bytes) { return (void *)((uintptr_t)sceGuGetMemory(bytes) | 0x40000000u); }
+static inline void gfx_draw(int prim, int vtype, int count, const void *v) {
+    if (count <= 0) return;
+    int stride = ((vtype & GU_TEXTURE_32BITF) == GU_TEXTURE_32BITF ? 8 : 0) + ((vtype & GU_COLOR_8888) == GU_COLOR_8888 ? 4 : 0) + 12;
+    sceKernelDcacheWritebackRange(v, (unsigned int)(count * stride));
+    sceGuDrawArray(prim, vtype, count, 0, v);
+}
 
 typedef struct { const void *data; int w, h, psm; } Tex;
 

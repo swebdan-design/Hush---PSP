@@ -317,7 +317,7 @@ static void clip_flush(void) {
     if (!g_nclip) return;
     VtxTCP *v = (VtxTCP *)sceGuGetMemory(g_nclip * (int)sizeof(VtxTCP));
     memcpy(v, g_clip, sizeof(VtxTCP) * (size_t)g_nclip);
-    sceGuDrawArray(GU_TRIANGLES, VT_TCP | GU_TRANSFORM_3D, g_nclip, 0, v);
+    gfx_draw(GU_TRIANGLES, VT_TCP | GU_TRANSFORM_3D, g_nclip, v);
     g_stats.tris_drawn += g_nclip / 3;
     g_nclip = 0;
 }
@@ -573,7 +573,7 @@ static void draw_neon(const World *w, const Atmos *a, float time) {
         v[k].color = c; v[k].x = n->a.x; v[k].y = n->a.y; v[k].z = n->a.z; k++;
         v[k].color = c; v[k].x = n->b.x; v[k].y = n->b.y; v[k].z = n->b.z; k++;
     }
-    if (k) sceGuDrawArray(GU_LINES, VT_CP | GU_TRANSFORM_3D, k, 0, v);
+    if (k) gfx_draw(GU_LINES, VT_CP | GU_TRANSFORM_3D, k, v);
     gfx_blend_alpha();
     sceGuDepthMask(GU_FALSE);
 }
@@ -610,7 +610,7 @@ static void draw_lane_marks(const World *w, const Atmos *a) {
     gfx_no_tex();
     sceGuDisable(GU_CULL_FACE);
     gfx_fog(1, a->fog_near, a->fog_far, a->fog_color);
-    if (k) sceGuDrawArray(GU_TRIANGLES, VT_CP | GU_TRANSFORM_3D, k, 0, v);
+    if (k) gfx_draw(GU_TRIANGLES, VT_CP | GU_TRANSFORM_3D, k, v);
 }
 
 /* ---------------- traffic ---------------- */
@@ -664,7 +664,7 @@ void rw_draw_traffic(const World *w, const Traffic *t, const Atmos *a, float tim
             m.m[8] *= sc.z; m.m[9] *= sc.z; m.m[10] *= sc.z;
             gfx_model(&m);
             sceGuColor(v->color);
-            VtxCP *cv = (VtxCP *)sceGuGetMemory(36 * sizeof(VtxCP));
+            VtxCP *cv = (VtxCP *)gfx_mem_uc(36 * sizeof(VtxCP));
             for (int k = 0; k < 36; k++) { cv[k] = g_car[k]; cv[k].color = col_scale(v->color, (float)(g_car[k].color & 0xFF) / 255.0f); }
             sceGuDrawArray(GU_TRIANGLES, VT_CP | GU_TRANSFORM_3D, 36, 0, cv);
             g_stats.vehicles_drawn++;
@@ -779,7 +779,7 @@ void rw_flush_lights(const World *w, const Atmos *a) {
         VtxTCP q0 = {0, 1, c, A.x, A.y, A.z}, q1 = {1, 1, c, B.x, B.y, B.z}, q2 = {1, 0, c, C.x, C.y, C.z}, q3 = {0, 0, c, D.x, D.y, D.z};
         v[k++] = q0; v[k++] = q1; v[k++] = q2; v[k++] = q0; v[k++] = q2; v[k++] = q3;
     }
-    if (k) sceGuDrawArray(GU_TRIANGLES, VT_TCP | GU_TRANSFORM_3D, k, 0, v);
+    if (k) gfx_draw(GU_TRIANGLES, VT_TCP | GU_TRANSFORM_3D, k, v);
     g_stats.lights_drawn = k / 6;
     g_nfl = 0;
     sceGuDepthMask(GU_FALSE);
@@ -870,7 +870,7 @@ void rw_draw_effects(const World *w, const Weather *wx, const Atmos *a, float ti
         VtxTCP q0 = {0, 1, c, A.x, A.y, A.z}, q1 = {1, 1, c, B.x, B.y, B.z}, q2 = {1, 0, c, C.x, C.y, C.z}, q3 = {0, 0, c, D.x, D.y, D.z};
         v[k++] = q0; v[k++] = q1; v[k++] = q2; v[k++] = q0; v[k++] = q2; v[k++] = q3;
     }
-    if (k) sceGuDrawArray(GU_TRIANGLES, VT_TCP | GU_TRANSFORM_3D, k, 0, v);
+    if (k) gfx_draw(GU_TRIANGLES, VT_TCP | GU_TRANSFORM_3D, k, v);
 
     /* rain: streaks in a box that travels with the camera */
     static const float rq[4] = { 0.4f, 0.6f, 0.8f, 1.0f };
@@ -895,7 +895,7 @@ void rw_draw_effects(const World *w, const Weather *wx, const Atmos *a, float ti
             lv[2 * i + 1].color = c0; lv[2 * i + 1].x = q.x; lv[2 * i + 1].y = q.y; lv[2 * i + 1].z = q.z;
             /* splash light flicker on water */
         }
-        sceGuDrawArray(GU_LINES, VT_CP | GU_TRANSFORM_3D, n * 2, 0, lv);
+        gfx_draw(GU_LINES, VT_CP | GU_TRANSFORM_3D, n * 2, lv);
     }
     sceGuDepthMask(GU_FALSE);
 }

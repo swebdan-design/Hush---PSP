@@ -7,7 +7,7 @@
 #include <string.h>
 #include <pspfpu.h>
 
-#define OUT_FRAMES 2048   /* 46 ms per block: room for hitches on real hardware (Memory Stick, slow frames) */
+#define OUT_FRAMES 1024   /* 23 ms per block: 2048 added audible latency on hardware */
 #define ENG_FRAMES (OUT_FRAMES / 2)
 
 static int16_t __attribute__((aligned(64))) g_out[2][OUT_FRAMES * 2];

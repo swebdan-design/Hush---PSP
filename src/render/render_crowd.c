@@ -113,6 +113,6 @@ void rw_draw_crowd(const Crowd *cr, const Atmos *a, float time) {
     sceGuDisable(GU_CULL_FACE);
     gfx_fog(1, a->fog_near, a->fog_far, a->fog_color);
     gfx_model_identity();
-    if (k) sceGuDrawArray(GU_TRIANGLES, VT_CP | GU_TRANSFORM_3D, k, 0, v);
+    if (k) gfx_draw(GU_TRIANGLES, VT_CP | GU_TRANSFORM_3D, k, v);
     sceGuEnable(GU_BLEND);
 }

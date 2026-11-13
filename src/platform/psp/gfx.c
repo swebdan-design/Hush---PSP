@@ -264,9 +264,12 @@ void gfx_fog(int on, float n, float f, uint32_t c) {
 
 /* ---------------- 2D ---------------- */
 
+/* Small per-call vertex blocks are written through the uncached alias of display-list memory (gfx_mem_uc): they
+ * reach RAM directly, so the GE never sees stale data and no cache writeback (a syscall) is needed per call. */
+
 void gfx_rect(float x, float y, float w, float h, uint32_t c) {
     gfx_no_tex();
-    VtxCP *v = (VtxCP *)sceGuGetMemory(2 * sizeof(VtxCP));
+    VtxCP *v = (VtxCP *)gfx_mem_uc(2 * sizeof(VtxCP));
     v[0].color = c; v[0].x = x; v[0].y = y; v[0].z = 0;
     v[1].color = c; v[1].x = x + w; v[1].y = y + h; v[1].z = 0;
     sceGuDrawArray(GU_SPRITES, VT_CP | GU_TRANSFORM_2D, 2, 0, v);
@@ -274,7 +277,7 @@ void gfx_rect(float x, float y, float w, float h, uint32_t c) {
 
 void gfx_rect_grad(float x, float y, float w, float h, uint32_t top, uint32_t bottom) {
     gfx_no_tex();
-    VtxCP *v = (VtxCP *)sceGuGetMemory(4 * sizeof(VtxCP));
+    VtxCP *v = (VtxCP *)gfx_mem_uc(4 * sizeof(VtxCP));
     v[0].color = top; v[0].x = x; v[0].y = y; v[0].z = 0;
     v[1].color = top; v[1].x = x + w; v[1].y = y; v[1].z = 0;
     v[2].color = bottom; v[2].x = x; v[2].y = y + h; v[2].z = 0;
@@ -284,7 +287,7 @@ void gfx_rect_grad(float x, float y, float w, float h, uint32_t top, uint32_t bo
 
 void gfx_line(float x0, float y0, float x1, float y1, uint32_t c) {
     gfx_no_tex();
-    VtxCP *v = (VtxCP *)sceGuGetMemory(2 * sizeof(VtxCP));
+    VtxCP *v = (VtxCP *)gfx_mem_uc(2 * sizeof(VtxCP));
     v[0].color = c; v[0].x = x0; v[0].y = y0; v[0].z = 0;
     v[1].color = c; v[1].x = x1; v[1].y = y1; v[1].z = 0;
     sceGuDrawArray(GU_LINES, VT_CP | GU_TRANSFORM_2D, 2, 0, v);
@@ -294,7 +297,7 @@ void gfx_lines(const float *xy, int n, uint32_t c, int closed) {
     if (n < 2) return;
     gfx_no_tex();
     int cnt = n + (closed ? 1 : 0);
-    VtxCP *v = (VtxCP *)sceGuGetMemory(cnt * (int)sizeof(VtxCP));
+    VtxCP *v = (VtxCP *)gfx_mem_uc(cnt * (int)sizeof(VtxCP));
     for (int i = 0; i < cnt; i++) { int k = i % n; v[i].color = c; v[i].x = xy[2 * k]; v[i].y = xy[2 * k + 1]; v[i].z = 0; }
     sceGuDrawArray(GU_LINE_STRIP, VT_CP | GU_TRANSFORM_2D, cnt, 0, v);
 }
@@ -306,7 +309,7 @@ void gfx_rect_outline(float x, float y, float w, float h, uint32_t c) {
 
 void gfx_tri(float x0, float y0, float x1, float y1, float x2, float y2, uint32_t c) {
     gfx_no_tex();
-    VtxCP *v = (VtxCP *)sceGuGetMemory(3 * sizeof(VtxCP));
+    VtxCP *v = (VtxCP *)gfx_mem_uc(3 * sizeof(VtxCP));
     v[0].color = c; v[0].x = x0; v[0].y = y0; v[0].z = 0;
     v[1].color = c; v[1].x = x1; v[1].y = y1; v[1].z = 0;
     v[2].color = c; v[2].x = x2; v[2].y = y2; v[2].z = 0;
@@ -315,7 +318,7 @@ void gfx_tri(float x0, float y0, float x1, float y1, float x2, float y2, uint32_
 
 void gfx_image(const Tex *t, float x, float y, float w, float h, float u0, float v0, float u1, float v1, uint32_t c) {
     gfx_bind(t, 1, 0);
-    VtxTCP *v = (VtxTCP *)sceGuGetMemory(2 * sizeof(VtxTCP));
+    VtxTCP *v = (VtxTCP *)gfx_mem_uc(2 * sizeof(VtxTCP));
     v[0].u = u0; v[0].v = v0; v[0].color = c; v[0].x = x; v[0].y = y; v[0].z = 0;
     v[1].u = u1; v[1].v = v1; v[1].color = c; v[1].x = x + w; v[1].y = y + h; v[1].z = 0;
     sceGuDrawArray(GU_SPRITES, VT_TCP | GU_TRANSFORM_2D, 2, 0, v);
@@ -362,7 +365,7 @@ float gfx_text(int font, float x, float y, const char *s, uint32_t col, int alig
     x = (float)(int)(x + 0.5f);
     y = (float)(int)(y + 0.5f);
     gfx_bind(&g_font_tex[font & 1], 0, 0);
-    VtxTCP *v = (VtxTCP *)sceGuGetMemory(n * 2 * (int)sizeof(VtxTCP));
+    VtxTCP *v = (VtxTCP *)gfx_mem_uc(n * 2 * (int)sizeof(VtxTCP));
     int k = 0;
     float cx = x;
     for (int i = 0; i < n; i++) {
